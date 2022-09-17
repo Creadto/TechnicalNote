@@ -109,15 +109,13 @@ final class ViewController: UIViewController {
         maskImage = maskImage.transformed(by: .init(scaleX: scaleX, y: scaleY))
 
         // Convert CIImage to CGImage
-        var maskCGImage = ciContext.createCGImage(maskImage, from: maskImage.extent)!
-        // CGIamge -> 1D-array -> choose 1 channel -> CGImage
-        var filteredCGImage = convertArrayToCGImage(fromCGImage: maskCGImage)
+        let maskCGImage = ciContext.createCGImage(maskImage, from: maskImage.extent)!
+        // Convert CGImage to 1D-Array
+        let (mask1DArray, imageInfo) = convertImageToArray(fromCGImage: maskCGImage)
+        // Convert 1D-Array to CGImage
+        let filteredCGImage = convertArrayToImage(fromPixelValues: mask1DArray, fromImageInfo : imageInfo)
         // Convert CGImage to CIImage
-        var filteredCIImage = CIImage(cgImage: filteredCGImage!)
-        
-        
-//        var maskCGImage = ciContext.createCGImage(maskImage, from: maskImage.extent)!
-//        var filteredCIImage = CIImage(cgImage: maskCGImage)
+        let filteredCIImage = CIImage(cgImage: filteredCGImage!)
         
         // Define RGB vectors for CIColorMatrix filter.
         let vectors = [
@@ -140,121 +138,146 @@ final class ViewController: UIViewController {
         currentCIImage = blendFilter.outputImage?.oriented(.left)
     }
 }
-
 /**
  *  Description : Convert CGImage to 1D-Array
  *
  *  @param : CGImage to convert
- *  @return : UInt8(0~255) type 1d array(vector)
+ *  @return :
+ *      - $0 : UInt8(0~255) type 1d array(vector)
+ *      - $1 : Dictionary<String : Any> : Image information related rendering(width, height, bitsPerComponent, bytesPerRow, totalBytes)
+ *
  */
-func convertArrayToCGImage(fromCGImage imageRef: CGImage?) -> CGImage? {
-    var width = 0
-    var height = 0
-    var pixelValues: [UInt8]?
+func convertImageToArray(fromCGImage imageRef: CGImage?) -> (pixelValues: [UInt8]?, imageInfo : [String : Any])
+{
+    var imageInfo : [String : Any] = [:]
     
+    var pixelValues: [UInt8]?
     if let imageRef = imageRef {
-        width = imageRef.width
-        height = imageRef.height
+        let width = imageRef.width
+        imageInfo["width"] = width
+        
+        let height = imageRef.height
+        imageInfo["height"] = height
+        
         let bitsPerComponent = imageRef.bitsPerComponent
+        imageInfo["bitsPerComponent"] = bitsPerComponent
+        
         let bytesPerRow = imageRef.bytesPerRow
+        imageInfo["bytesPerRow"] = bytesPerRow
+        
         let totalBytes = height * bytesPerRow
-        let bitmapInfo = imageRef.bitmapInfo
-        
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        imageInfo["totalBytes"] = totalBytes
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
         var intensities = [UInt8](repeating: 0, count: totalBytes)
-        
-        let contextRef = CGContext(data: &intensities,
-                                   width: width,
-                                   height: height,
-                                   bitsPerComponent: bitsPerComponent,
-                                   bytesPerRow: bytesPerRow,
-                                   space: colorSpace,
-                                   bitmapInfo: bitmapInfo.rawValue)
-        
-        // CGImage -> 1d array로 변환하는 부분
+        let contextRef = CGContext(data: &intensities, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: 0)
         contextRef?.draw(imageRef, in: CGRect(x: 0.0, y: 0.0, width: CGFloat(width), height: CGFloat(height)))
+
         pixelValues = intensities
         
         
-
-        var filteredCGImage: CGImage?
-        if var pixelValues = pixelValues {
-            filteredCGImage = withUnsafePointer(to: &pixelValues, {
-                ptr -> CGImage? in
-                var filteredCGImage: CGImage?
-                let data = UnsafeRawPointer(ptr.pointee).assumingMemoryBound(to: UInt8.self)
-                let releaseData: CGDataProviderReleaseDataCallback = {
-                    (info: UnsafeMutableRawPointer?, data: UnsafeRawPointer, size: Int) -> () in
-                }
-                
-                if let providerRef = CGDataProvider(dataInfo: nil, data: data, size: totalBytes, releaseData: releaseData) {
-                    filteredCGImage = CGImage(width: width,
-                                              height: height,
-                                              bitsPerComponent: bitsPerComponent,
-                                              bitsPerPixel: bitsPerComponent,
-                                              bytesPerRow: bytesPerRow,
-                                              space: colorSpace,
-                                              bitmapInfo: bitmapInfo,
-                                              provider: providerRef,
-                                              decode: nil,
-                                              shouldInterpolate: false,
-                                              intent: CGColorRenderingIntent.defaultIntent)
-                }
-                
-                return filteredCGImage
-            })
-        }
+        // Choose one channel of 4 channel(R,G,B,W)
+        
+        /**
+            @Description : Choose the first channel (R channel of R,G,B,W)
+         */
+//        for (index, element) in pixelValues!.enumerated() {
+//            if(index % 4 == 0){
+//                for i in 1...3 {
+//                    pixelValues?[index+i] = element
+//                }
+//            }
+//        }
+        
+        /**
+            @Description : Choose the second channel(g channgel of r,g,b,w)
+         */
+//        for (index, element) in pixelValues!.enumerated() {
+//            if(index % 4 == 1){
+//                for i in 0...2 {
+//                    if(i == 0) {
+//                        pixelValues?[index-1] = element
+//                    }
+//                    else {
+//                        pixelValues?[index+i] = element
+//                    }
+//                }
+//            }
+//        }
+        
+        /**
+         @Description : Choose the third channel(b channel of r,g,b,w)
+        */
+//        for (index, element) in pixelValues!.enumerated() {
+//            if(index % 4 == 2){
+//                for i in 1...3 {
+//                    if(i != 3) {
+//                        pixelValues?[index-i] = element
+//                    }
+//                    else {
+//                        pixelValues?[index+1] = element
+//                    }
+//                }
+//            }
+//        }
+        /**
+         @Description : Choose the last channel(w channel of r,g,b,w)
+        */
+//        for (index, element) in pixelValues!.enumerated() {
+//            if(index % 4 == 3){
+//                for i in 1...3 {
+//                    pixelValues?[index-i] = element
+//                }
+//            }
+//        }
+        
     }
-    return nil
+    
+    return (pixelValues, imageInfo)
 }
 
-    
 /**
  *  Description : Convert 1D-Array to CGImage
  *
  *  @param :
- *  @return :
+ *      - $0 : UInt8(0~255) type 1d array(vector)
+ *      - $1 : Dictionary<String : Any> : Image information related rendering(width, height, bitsPerComponent, bytesPerRow, totalBytes)
+ *  @return : converted CGImage
+ *
  */
-//func convertCGImage(fromPixelValues pixelValues: [UInt8]?) -> CGImage?
-//{
-//    var imageRef: CGImage?
-//    if let imageRef = imageRef {
-//        let bitsPerComponent = 8
-//        let bytesPerPixel = 1
-//        let bitsPerPixel = bytesPerPixel * bitsPerComponent
-//        let bytesPerRow = bytesPerPixel * width
-//        let totalBytes = height * bytesPerRow
-//
-//        imageRef = withUnsafePointer(to: &pixelValues, {
-//            ptr -> CGImage? in
-//            var imageRef: CGImage?
-//            let colorSpaceRef = CGColorSpaceCreateDeviceRGB()
-//            let bitmapInfo = bitmapInfo
-//            let data = UnsafeRawPointer(ptr.pointee).assumingMemoryBound(to: UInt8.self)
-//            let releaseData: CGDataProviderReleaseDataCallback = {
-//                (info: UnsafeMutableRawPointer?, data: UnsafeRawPointer, size: Int) -> () in
-//            }
-//
-//            if let providerRef = CGDataProvider(dataInfo: nil, data: data, size: totalBytes, releaseData: releaseData) {
-//                imageRef = CGImage(width: width,
-//                                   height: height,
-//                                   bitsPerComponent: bitsPerComponent,
-//                                   bitsPerPixel: bitsPerPixel,
-//                                   bytesPerRow: bytesPerRow,
-//                                   space: colorSpaceRef,
-//                                   bitmapInfo: bitmapInfo,
-//                                   provider: providerRef,
-//                                   decode: nil,
-//                                   shouldInterpolate: false,
-//                                   intent: CGColorRenderingIntent.defaultIntent)
-//            }
-//
-//            return imageRef
-//        })
-//    }
-//    return imageRef
-//}
+func convertArrayToImage(fromPixelValues pixelValues: [UInt8]?, fromImageInfo imageInfo : [String : Any]) -> CGImage?
+{
+    var imageRef: CGImage?
+    if var pixelValues = pixelValues {
+        imageRef = withUnsafePointer(to: &pixelValues, {
+            ptr -> CGImage? in
+            var imageRef: CGImage?
+            let colorSpaceRef = CGColorSpaceCreateDeviceGray()
+            let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue).union(CGBitmapInfo())
+            let data = UnsafeRawPointer(ptr.pointee).assumingMemoryBound(to: UInt8.self)
+            let releaseData: CGDataProviderReleaseDataCallback = {
+                (info: UnsafeMutableRawPointer?, data: UnsafeRawPointer, size: Int) -> () in
+            }
+            
+            if let providerRef = CGDataProvider(dataInfo: nil, data: data, size: imageInfo["totalBytes"] as! Int, releaseData: releaseData) {
+                imageRef = CGImage(width: imageInfo["width"] as! Int,
+                                   height: imageInfo["height"] as! Int,
+                                   bitsPerComponent: imageInfo["bitsPerComponent"] as! Int,
+                                   bitsPerPixel: imageInfo["bitsPerComponent"] as! Int,
+                                   bytesPerRow: imageInfo["bytesPerRow"] as! Int,
+                                   space: colorSpaceRef,
+                                   bitmapInfo: bitmapInfo,
+                                   provider: providerRef,
+                                   decode: nil,
+                                   shouldInterpolate: false,
+                                   intent: CGColorRenderingIntent.defaultIntent)
+            }
+            return imageRef
+        })
+    }
 
+    return imageRef
+}
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 
