@@ -97,7 +97,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1119C68420AA138500DDFCC2 /* 3D UI and Visualizations  */ = {
+		1119C68420AA138500DDFCC2 /* 3DUIandVisualizations  */ = {
 			isa = PBXGroup;
 			children = (
 				C46B56332015D997001C41CE /* BoundingBox.swift */,
@@ -114,8 +114,8 @@
 				C4A938C4208799D3008D5D13 /* Tile.swift */,
 				3947D3FF2076927E00BDBE95 /* Wireframe.swift */,
 			);
-			name = "3D UI and Visualizations ";
-			path = "ScanningApp/3D UI and Visualizations ";
+			name = "3DUIandVisualizations ";
+			path = "ScanningApp/3DUIandVisualizations ";
 			sourceTree = "<group>";
 		};
 		11D4F6C220A1973300892189 /* Gesture Recognizers */ = {
@@ -162,7 +162,7 @@
 				C479BF30201F84D70030C57A /* Controllers */,
 				C479BF31201F84EB0030C57A /* Views */,
 				11D4F6C220A1973300892189 /* Gesture Recognizers */,
-				1119C68420AA138500DDFCC2 /* 3D UI and Visualizations  */,
+				1119C68420AA138500DDFCC2 /* 3DUIandVisualizations  */,
 				11D4F6C320A19AF200892189 /* Utility Extensions */,
 				C479BF32201F84FB0030C57A /* Storyboards */,
 				395C9950200707A40025413C /* Assets.xcassets */,
