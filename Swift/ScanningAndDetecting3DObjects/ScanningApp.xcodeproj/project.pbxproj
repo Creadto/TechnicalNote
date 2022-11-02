@@ -97,7 +97,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1119C68420AA138500DDFCC2 /* 3DUIandVisualizations  */ = {
+		1119C68420AA138500DDFCC2 /* 3DUIandVisualizations */ = {
 			isa = PBXGroup;
 			children = (
 				C46B56332015D997001C41CE /* BoundingBox.swift */,
@@ -114,29 +114,29 @@
 				C4A938C4208799D3008D5D13 /* Tile.swift */,
 				3947D3FF2076927E00BDBE95 /* Wireframe.swift */,
 			);
-			name = "3DUIandVisualizations ";
-			path = "ScanningApp/3DUIandVisualizations ";
+			name = 3DUIandVisualizations;
+			path = ScanningApp/3DUIandVisualizations;
 			sourceTree = "<group>";
 		};
-		11D4F6C220A1973300892189 /* Gesture Recognizers */ = {
+		11D4F6C220A1973300892189 /* GestureRecognizers */ = {
 			isa = PBXGroup;
 			children = (
 				C49D033920A07F34003D21D7 /* ThresholdPanGestureRecognizer.swift */,
 				C47FEA4D20888B83008C1749 /* ThresholdPinchGestureRecognizer.swift */,
 				C49D033F20A086D2003D21D7 /* ThresholdRotationGestureRecognizer.swift */,
 			);
-			name = "Gesture Recognizers";
-			path = "ScanningApp/Gesture Recognizers";
+			name = GestureRecognizers;
+			path = ScanningApp/GestureRecognizers;
 			sourceTree = "<group>";
 		};
-		11D4F6C320A19AF200892189 /* Utility Extensions */ = {
+		11D4F6C320A19AF200892189 /* UtilityExtensions */ = {
 			isa = PBXGroup;
 			children = (
 				C46B563A20173523001C41CE /* ARCameraTrackingState.swift */,
 				39E6F859200EE27800B278CA /* Utilities.swift */,
 			);
-			name = "Utility Extensions";
-			path = "ScanningApp/Utility Extensions";
+			name = UtilityExtensions;
+			path = ScanningApp/UtilityExtensions;
 			sourceTree = "<group>";
 		};
 		12C2354012C22E8000000001 /* Configuration */ = {
@@ -161,9 +161,9 @@
 				1119C68220AA135700DDFCC2 /* README.md */,
 				C479BF30201F84D70030C57A /* Controllers */,
 				C479BF31201F84EB0030C57A /* Views */,
-				11D4F6C220A1973300892189 /* Gesture Recognizers */,
-				1119C68420AA138500DDFCC2 /* 3DUIandVisualizations  */,
-				11D4F6C320A19AF200892189 /* Utility Extensions */,
+				11D4F6C220A1973300892189 /* GestureRecognizers */,
+				1119C68420AA138500DDFCC2 /* 3DUIandVisualizations */,
+				11D4F6C320A19AF200892189 /* UtilityExtensions */,
 				C479BF32201F84FB0030C57A /* Storyboards */,
 				395C9950200707A40025413C /* Assets.xcassets */,
 				C4543843207F38460016097A /* art.scnassets */,
