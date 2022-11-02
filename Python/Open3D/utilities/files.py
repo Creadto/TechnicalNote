@@ -13,13 +13,13 @@ def load_ply(root, filename, cam_loc):
     n_of_points = len(pcd.points)
     pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.5)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
-
     if cam_loc is not None:
         for key in cam_loc.keys():
             if key in filename:
                 transform = cam_loc[key]
                 location = transform[-1][0:3]
                 pcd.orient_normals_towards_camera_location(np.array(location))
+                pcd.transform(np.identity(4))
                 break
     return pcd, n_of_points
 

@@ -1,14 +1,37 @@
 import copy
-
 import utilities.files as files
 import utilities.visualization as vis
 import preproc.registration as reg
+import numpy as np
+
+
+def rotation():
+    config = files.get_yaml(path='./data/rotate/local_config.yaml')
+    pcds = files.load_pcds('./data/rotate', cam_loc=config['CameraLocation'])
+    is_processing = True
+    while is_processing:
+        scale = float(input("insert scale"))
+        dummy = copy.deepcopy(pcds)
+        for idx, pcd in enumerate(dummy):
+            rot = ((np.pi / 4) * idx)
+            rot_mat = pcd.get_rotation_matrix_from_xyz((0, rot, 0))
+            pcd.rotate(rot_mat)
+            term = scale / len(dummy)
+            pcd.translate((term * idx, 0, term * idx), relative=False)
+            dummy[idx] = pcd
+
+        vis.draw_color(dummy)
+        is_processing = input("Do you want to exit? (Yes / No)").lower() == 'no'
+        if is_processing is False:
+            pcds = dummy
+    vis.draw_geometries(pcds)
+    vis.draw_geometries(pcds, True)
 
 
 def registration():
     v_size = 0.005
-    config = files.get_yaml(path='./data/load/local_config.yaml')
-    pcds = files.load_pcds('./data/load', cam_loc=config['CameraLocation'])
+    config = files.get_yaml(path='./data/rotate/local_config.yaml')
+    pcds = files.load_pcds('./data/rotate', cam_loc=config['CameraLocation'])
     vis.draw_color(pcds, view_normal=False)
     source = copy.deepcopy(pcds[0])
     for idx in range(1, len(pcds)):
@@ -39,7 +62,7 @@ def cutting():
 
 
 def main():
-    registration()
+    rotation()
 
 
 if __name__ == '__main__':
