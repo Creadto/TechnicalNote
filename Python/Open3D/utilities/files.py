@@ -8,6 +8,21 @@ def get_yaml(path):
     return YamlConfig.get_dict(path)
 
 
+def get_pos_in_file(ply_path):
+    ply_file = open(ply_path, 'r')
+    while True:
+        line = ply_file.readline()
+        if "comment" in line:
+            begin = line.find('[')
+            value_string = line[begin:-1]
+            value_string = value_string.replace('[', '')
+            value_string = value_string.replace(']', '')
+            vector_string = value_string.split(',')
+            vector = [float(value) for value in vector_string]
+            matrix = np.array(vector).reshape((4, 4))
+            return matrix
+
+
 def load_ply(root, filename, cam_loc):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     n_of_points = len(pcd.points)
@@ -32,6 +47,14 @@ def load_pcds(path, cam_loc=None):
         pcd, _ = load_ply(root=path, filename=ply, cam_loc=cam_loc)
         pcds.append(pcd)
     return pcds
+
+
+def write_tri_mesh(mesh, filename, path=""):
+    o3d.io.write_triangle_mesh(os.path.join(path, filename), mesh, write_ascii=True)
+
+
+def write_pcd(pcd, filename, path=""):
+    o3d.io.write_point_cloud(filename=os.path.join(path, filename), pointcloud=pcd, write_ascii=True)
 
 
 def clone_ply(ply, root, filename):

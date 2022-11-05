@@ -61,9 +61,18 @@ def cutting():
         is_processing = input("Do you want to exit? (Yes / No)").lower() == 'no'
 
 
+
+
+
 def main():
-    rotation()
+    config = files.get_yaml(path='./data/rotate/local_config.yaml')
+    pcds = files.load_pcds('./data/rotate', cam_loc=config['CameraLocation'])
+    pcd = pcds[0]
+    me = convert_mesh_from_pcd(pcd)
+    write_mesh(me, 'meshes.ply', path="./")
 
 
 if __name__ == '__main__':
+    test_string = "comment lastCameraTransform simd_float4x4([[0.32111344, -0.68261546, 0.65644664, 0.0], [0.8964156, -0.004512767, -0.44319144, 0.0], [0.30549175, 0.73076373, 0.6104581, 0.0], [-0.14820269, 0.016736932, 0.27311406, 0.9999999]])"
+
     main()
