@@ -6,13 +6,14 @@ class HttpServer:
     def __init__(self, ip: str, port: int, listener, handler):
         self.NewMessage = None
         self.listener = listener
-        httpd = HTTPServer((ip, port), handler)
-        httpd.serve_forever()
+        self.ip = ip
+        self.port = port
+        self.handler = handler
+        self.serve_start()
 
-    def listen(self):
-        while True:
-            self.NewMessage = self.listener()
-            time.sleep(0.001)
+    def serve_start(self):
+        httpd = HTTPServer((self.ip, self.port), self.handler)
+        httpd.serve_forever()
 
 
 if __name__ == '__main__':

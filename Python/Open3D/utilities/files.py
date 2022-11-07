@@ -14,7 +14,7 @@ def get_pos_in_file(ply_path):
         line = ply_file.readline()
         if "comment" in line:
             begin = line.find('[')
-            value_string = line[begin:-1]
+            value_string = line[begin:-2]
             value_string = value_string.replace('[', '')
             value_string = value_string.replace(']', '')
             vector_string = value_string.split(',')
@@ -23,19 +23,44 @@ def get_pos_in_file(ply_path):
             return matrix
 
 
+def convert_http_ply(path, new_filename):
+    ply_file = open(path, 'r')
+    new_file = open(new_filename, 'w')
+    is_header = False
+    while True:
+        line = ply_file.readline()
+        if not line:
+            break
+        if "ply\n" == line:
+            is_header = True
+        if "boundary" not in line and '\n' not in line:
+            continue
+        if is_header:
+            new_file.write(line)
+    new_file.close()
+    ply_file.close()
+
+
 def load_ply(root, filename, cam_loc):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     n_of_points = len(pcd.points)
     pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.5)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
     if cam_loc is not None:
-        for key in cam_loc.keys():
-            if key in filename:
-                transform = cam_loc[key]
-                location = transform[-1][0:3]
-                pcd.orient_normals_towards_camera_location(np.array(location))
-                pcd.transform(np.identity(4))
-                break
+        if isinstance(cam_loc, dict):
+            for key in cam_loc.keys():
+                if key in filename:
+                    transform = cam_loc[key]
+                    location = transform[-1][0:3]
+                    pcd.orient_normals_towards_camera_location(np.array(location))
+                    pcd.transform(np.identity(4))
+                    break
+        else:
+            transform = cam_loc
+            location = transform[-1][0:3]
+            pcd.orient_normals_towards_camera_location(np.array(location))
+            pcd.transform(np.identity(4))
+
     return pcd, n_of_points
 
 

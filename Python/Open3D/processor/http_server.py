@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+from multiprocessing import Process
 from json import dumps
 import processor.meshing as meshing
 from http.server import BaseHTTPRequestHandler
@@ -29,15 +30,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if len(check_files) > 0:
                     status = check
                     break
-            if "Check" not in receive_data:
+            if "check" not in receive_data.lower():
                 if status == 'Meshed':
                     in_file = open(os.path.join(path, "Meshed.ply"), "rb")
                     data = in_file.read()
                     os.remove(os.path.join(path, "Meshed.ply"))
+                    self.wfile.write(data)
+                    return
                 else:
                     status = "Invalid"
 
         else:
+            status = "Received"
             f = open(os.path.join(path, 'Received.ply'), 'wb')
             f.write(receive_data)
             f.close()
@@ -57,31 +61,45 @@ class HttpProvider:
         if not isinstance(port, int):
             raise Exception("Wrong Port number: Input port number as integer")
 
+        self.ip = ip
+        self.port = port
         self.storage_path = os.path.dirname(os.path.abspath(__file__))
-        self.server = HttpServer(ip=ip, port=port, listener=self.listener(), handler=RequestHandler)
+        self.server = None
+
+        self.NewMessage = None
+        self.p = Process(target=self.binder)
+        self.p.start()
 
     def serve(self):
-        t = threading.Thread(target=self.server.listen)
+        t = threading.Thread(target=self.listener)
         t.start()
 
         run_flag = True
         while run_flag:
-            if self.server.NewMessage is not None:
-                camera_location = files.get_pos_in_file(self.server.NewMessage)
-                pcd = files.load_ply(root='', filename=self.server.NewMessage, cam_loc=camera_location)
-                files.write_pcd(pcd=pcd, filename="Loaded.ply", path=self.storage_path)
-                os.remove(self.server.NewMessage)
-                self.server.NewMessage = None
-                mesh = meshing.gen_tri_mesh(pcd)
-                files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
-                os.remove(os.path.join(self.storage_path, "pcd.ply"))
+            if self.NewMessage is not None:
+                self.mesh_seq()
+            time.sleep(0.01)
+        self.p.join()
 
-            time.sleep(0.001)
+    def mesh_seq(self):
+        loaded_path = os.path.join(self.storage_path, "Loaded.ply")
+        files.convert_http_ply(self.NewMessage, loaded_path)
+        os.remove(self.NewMessage)
+        self.NewMessage = None
+        camera_location = files.get_pos_in_file(loaded_path)
+        pcd, _ = files.load_ply(root='', filename=loaded_path, cam_loc=camera_location)
+        mesh = meshing.gen_tri_mesh(pcd)
+        files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
+        os.remove(os.path.join(self.storage_path, "Loaded.ply"))
+
+    def binder(self):
+        self.server = HttpServer(ip=self.ip, port=self.port, listener=self.listener, handler=RequestHandler)
 
     def listener(self):
-        file_list = os.listdir(self.storage_path)
-        file_list = [file for file in file_list if 'bytes' in file]
-        if len(file_list) > 0:
-            return os.path.join(self.storage_path, file_list[-1])
-        else:
-            return None
+        while True:
+            file_list = os.listdir(self.storage_path)
+            file_list = [file for file in file_list if 'Received' in file]
+            if len(file_list) > 0:
+                self.NewMessage = os.path.join(self.storage_path, file_list[-1])
+            else:
+                self.NewMessage = None
