@@ -37,7 +37,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if status == 'Meshed':
                     in_file = open(os.path.join(path, "Meshed.ply"), "rb")
                     data = in_file.read()
-                    #os.remove(os.path.join(path, "Meshed.ply"))
+                    os.remove(os.path.join(path, "Meshed.ply"))
                     self.wfile.write(data)
                     return
                 else:
