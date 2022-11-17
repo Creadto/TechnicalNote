@@ -7,4 +7,7 @@ def main(ip, port):
 
 
 if __name__ == '__main__':
-    main('192.168.219.108', 3000)
+    import socket
+    my_ip = socket.gethostbyname(socket.gethostname())
+    print(my_ip)
+    main("192.168.219.104", 3000)

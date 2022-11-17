@@ -36,11 +36,3 @@ def make_poisson_mesh(target):
             o3d.utility.VerbosityLevel.Debug) as cm:
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
             target, depth=9)
-
-
-if __name__ == '__main__':
-    pcd = read_sample("EaglePointCloud")
-    o3d.visualization.draw_geometries([pcd], point_show_normal=False)
-    o3d.visualization.draw_geometries([pcd], point_show_normal=True)
-    mesh = make_tri_mesh(pcd)
-    o3d.visualization.draw_geometries([mesh])

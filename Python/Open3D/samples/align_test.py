@@ -31,6 +31,19 @@ def convert_to_image(root):
         print(dists)
         files.convert_ply_to_img(pcd=pcd, path=os.path.join(root, name.replace('ply', 'jpg')))
 
+
+def mesh_filtering(root):
+    file_list = os.listdir(root)
+    file_list = [file for file in file_list if 'mesh.ply' in file]
+    raw_mesh = files.load_mesh(root=root, filename=file_list[0])
+    tau_mesh = meshing.taubin_filter(raw_mesh)
+    files.write_tri_mesh(mesh=tau_mesh, path=root, filename='tau_mesh.ply')
+
+    removed = meshing.remove_noise(tau_mesh, 1000)
+    mesh = removed.subdivide_loop(number_of_iterations=1)
+    import open3d as o3d
+    o3d.visualization.draw_geometries([mesh])
+
 def to_mesh(root):
     import open3d as o3d
     import copy
@@ -73,10 +86,9 @@ def to_mesh(root):
 
     combined = meshing.combine_pcds(new_pcds, True)
     mesh = meshing.gen_tri_mesh(combined)
-    files.write_tri_mesh(mesh, 'mesh.ply', './')
+    files.write_tri_mesh(mesh, '../data/me/mesh.ply', './')
 
 
 if __name__ == '__main__':
     root_dir = r"../data/me/"
-    #change_filename(root=root_dir)
-    convert_to_image(root=root_dir)
+    mesh_filtering(root_dir)

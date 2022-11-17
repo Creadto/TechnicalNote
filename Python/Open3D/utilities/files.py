@@ -89,6 +89,11 @@ def load_ply(root, filename, cam_loc):
     return pcd, n_of_points
 
 
+def load_mesh(root, filename):
+    mesh = o3d.io.read_triangle_mesh(os.path.join(root, filename))
+    return mesh
+
+
 def load_pcds(path, cam_loc=None):
     pcds = []
     file_list = os.listdir(path)
