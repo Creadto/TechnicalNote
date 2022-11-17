@@ -1,3 +1,4 @@
+import copy
 import os
 import open3d as o3d
 import numpy as np
@@ -8,11 +9,11 @@ def get_yaml(path):
     return YamlConfig.get_dict(path)
 
 
-def get_pos_in_file(ply_path):
+def get_position(ply_path):
     ply_file = open(ply_path, 'r')
     while True:
         line = ply_file.readline()
-        if "comment" in line:
+        if "lastCameraTransform" in line:
             begin = line.find('[')
             value_string = line[begin:-2]
             value_string = value_string.replace('[', '')
@@ -21,6 +22,30 @@ def get_pos_in_file(ply_path):
             vector = [float(value) for value in vector_string]
             matrix = np.array(vector).reshape((4, 4))
             return matrix
+
+
+def get_filename(ply_path):
+    ply_file = open(ply_path, 'r')
+    while True:
+        line = ply_file.readline()
+        if "direction" in line:
+            value_string = line[:-1]
+            value_string = value_string.replace('comment direction ', '')
+            return value_string
+
+
+def convert_ply_to_img(pcd, path):
+    render_pcd = copy.deepcopy(pcd)
+    R = render_pcd.get_rotation_matrix_from_xyz((0, -np.pi / 4, 0))
+    render_pcd.rotate(R)
+
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.get_render_option().point_color_option = o3d.visualization.PointColorOption.Color
+    vis.get_render_option().point_size = 3.0
+    vis.add_geometry(render_pcd)
+    vis.capture_screen_image(path, do_render=True)
+    vis.destroy_window()
 
 
 def convert_http_ply(path, new_filename):
@@ -44,7 +69,7 @@ def convert_http_ply(path, new_filename):
 def load_ply(root, filename, cam_loc):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     n_of_points = len(pcd.points)
-    pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=1.5)
+    pcd.remove_statistical_outlier(nb_neighbors=5, std_ratio=1.5)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
     if cam_loc is not None:
         if isinstance(cam_loc, dict):
@@ -69,6 +94,8 @@ def load_pcds(path, cam_loc=None):
     file_list = os.listdir(path)
     file_list = [file for file in file_list if '.ply' in file]
     for ply in file_list:
+        if cam_loc is None:
+            cam_loc = get_position(ply_path=os.path.join(path, ply))
         pcd, _ = load_ply(root=path, filename=ply, cam_loc=cam_loc)
         pcds.append(pcd)
     return pcds

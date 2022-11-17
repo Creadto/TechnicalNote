@@ -123,7 +123,7 @@ class HttpProvider:
             loaded_path = os.path.join(self.storage_path, load_name)
             files.convert_http_ply(os.path.join(self.storage_path, file_name), loaded_path)
             os.remove(os.path.join(self.storage_path, file_name))
-            camera_location = files.get_pos_in_file(loaded_path)
+            camera_location = files.get_position(loaded_path)
             pcd, _ = files.load_ply(root='', filename=loaded_path, cam_loc=camera_location)
             pcds.append(pcd)
         self.NewMessage = None
