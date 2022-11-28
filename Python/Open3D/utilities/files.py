@@ -66,7 +66,7 @@ def convert_http_ply(path, new_filename):
     ply_file.close()
 
 
-def load_ply(root, filename, cam_loc):
+def load_ply(root, filename, cam_loc, **kwargs):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     n_of_points = len(pcd.points)
     pcd.remove_statistical_outlier(nb_neighbors=5, std_ratio=1.5)
@@ -78,12 +78,14 @@ def load_ply(root, filename, cam_loc):
                     transform = cam_loc[key]
                     location = transform[-1][0:3]
                     pcd.orient_normals_towards_camera_location(np.array(location))
-                    pcd.transform(np.identity(4))
                     break
         else:
             transform = cam_loc
             location = transform[-1][0:3]
-            pcd.orient_normals_towards_camera_location(np.array(location))
+            pcd.orient_normals_towards_camera_location(location)
+        if "to_cam" in kwargs:
+            pcd.transform(kwargs['to_cam'].T)
+        else:
             pcd.transform(np.identity(4))
 
     return pcd, n_of_points
@@ -140,3 +142,6 @@ def trim_ply(ply, begin, end, root, filename):
             is_header = False
     f.close()
     new_f.close()
+
+    new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'), cam_loc=None)
+    return new_pcd

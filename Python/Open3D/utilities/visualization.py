@@ -13,4 +13,6 @@ def draw_color(pcds, view_normal=False):
 
 
 def draw_geometries(pcds, view_normal=False):
+    if isinstance(pcds, list) is False:
+        pcds = [pcds]
     o3d.visualization.draw_geometries(pcds, point_show_normal=view_normal)
