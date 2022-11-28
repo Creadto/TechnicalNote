@@ -94,13 +94,13 @@ def to_mesh(root):
             R = pcd.get_rotation_matrix_from_xyz((0, np.pi / 2, 0))
             new_pcd.translate((-offset, 0, offset))
         elif "right" in lower:
-            R = pcd.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2, 0))
+            R = pcd.get_rotation_matrix_from_xyz((0, np.pi * 1.6, 0))
             new_pcd.translate((0.35, 0, 0.05))
         else:
             R = pcd.get_rotation_matrix_from_xyz((0, 0, 0))
             new_pcd.translate((-offset, 0, -offset))
         if "right" in lower:
-            new_pcd.translate((-0.05, 0, 0.05))
+            new_pcd.translate((0.0159, 0, 0.0547))
         if "front" in lower:
             new_pcd.translate((0.05, 0, -0.05))
 

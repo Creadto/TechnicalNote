@@ -2,20 +2,21 @@ import os
 import numpy as np
 import open3d as o3d
 import utilities.files as files
-from utilities.basic.calculator import distance_vector3
+from utilities.basic.calculator import distance_matrix3
 from utilities.solver.metaheuristics import HarmonySearch
+import datetime
 
 
 def align_point_cloud_hsa():
-    HSA_parameters = {'hmcr': 0.7, 'par': 0.1, 'hms': 20, 'max': False}
-    hyper_parameter = {'x-rot': {'min': 0.0, 'max': 2.0},
-                       'y-rot': {'min': 0.0, 'max': 2.0},
-                       'z-rot': {'min': 0.0, 'max': 2.0},
-                       'x-tns': {'min': 0.000, 'max': 2.000},
-                       'y-tns': {'min': 0.000, 'max': 2.000},
-                       'z-tns': {'min': 0.000, 'max': 2.000},
+    hsa_parameters = {'hmcr': 0.7, 'par': 0.1, 'hms': 15, 'max': False}
+    hyper_parameter = {'x-rot': {'min': 0.0, 'max': 0.0},
+                       'y-rot': {'min': 0.3, 'max': 0.6},
+                       'z-rot': {'min': 0.0, 'max': 0.0},
+                       'x-tns': {'min': -0.030, 'max': 0.060},
+                       'y-tns': {'min': 0.000, 'max': 0.000},
+                       'z-tns': {'min': -0.030, 'max': 0.060},
                        }
-    parameters = dict(HSA_parameters, **hyper_parameter)
+    parameters = dict(hsa_parameters, **hyper_parameter)
     test_function = hsa_test
 
     solver = HarmonySearch(parameters=parameters, test_function=test_function)
@@ -42,21 +43,17 @@ def hsa_test(parameter):
     tgt_pcd = tgt_pcd.rotate(R)
 
     # evaluation
-    if len(src_pcd.normals) > len(tgt_pcd.normals):
+    if len(src_pcd.normals) < len(tgt_pcd.normals):
         src_points = np.asarray(tgt_pcd.normals)
         tgt_points = np.asarray(src_pcd.normals)
     else:
         src_points = np.asarray(src_pcd.normals)
         tgt_points = np.asarray(tgt_pcd.normals)
 
-    src_colors = np.asarray(src_pcd.colors)
-    tgt_colors = np.asarray(tgt_pcd.colors)
-    # xyz matching
-    output = 0.0
-    for idx in range(len(src_points)):
-        source = src_points[idx, :]
-        eval_dist = distance_vector3(source, tgt_points)
-        output += eval_dist
+    # normal matching
+    start = datetime.datetime.now()
+    output = distance_matrix3(src_points, tgt_points)
+    print(datetime.datetime.now() - start)
     # color matching in matched xyz
     return output
 

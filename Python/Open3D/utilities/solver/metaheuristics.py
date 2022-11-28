@@ -2,6 +2,8 @@ import random
 import copy
 from multiprocessing import Pool
 
+import numpy as np
+
 
 class Solver:
     def __init__(self, **kwargs):
@@ -36,7 +38,10 @@ class HarmonySearch(Solver):
         self.__hms = self._Parameters['hms']
         self.__hm = {'output': [], 'value': []}
         for _ in range(self.__hms):
-            self.__hm['output'].append(0.0)
+            if self._Parameters['max']:
+                self.__hm['output'].append(0.0)
+            else:
+                self.__hm['output'].append(np.Inf)
             self.__hm['value'].append(self.__gen_memory())
 
         self.not_update_memory = 0
