@@ -9,7 +9,8 @@ def combine_pcds(pcds, down_sampling=False):
         combined += pcd
     if down_sampling:
         combined = combined.voxel_down_sample(voxel_size=0.001)
-    return combined
+
+    return combined.remove_duplicated_points()
 
 
 def gen_tri_mesh(pcd):

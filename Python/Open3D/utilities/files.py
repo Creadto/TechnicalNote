@@ -3,6 +3,7 @@ import os
 import open3d as o3d
 import numpy as np
 from utilities.yaml_config import YamlConfig
+from utilities.measure import get_width, get_height
 
 
 def get_yaml(path):
@@ -68,8 +69,6 @@ def convert_http_ply(path, new_filename):
 
 def load_ply(root, filename, cam_loc, **kwargs):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
-    n_of_points = len(pcd.points)
-    pcd.remove_statistical_outlier(nb_neighbors=5, std_ratio=1.5)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
     if cam_loc is not None:
         if isinstance(cam_loc, dict):
@@ -88,7 +87,7 @@ def load_ply(root, filename, cam_loc, **kwargs):
         else:
             pcd.transform(np.identity(4))
 
-    return pcd, n_of_points
+    return pcd
 
 
 def load_mesh(root, filename):
@@ -145,3 +144,26 @@ def trim_ply(ply, begin, end, root, filename):
 
     new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'), cam_loc=None)
     return new_pcd
+
+
+def crop_ply(ply: o3d.geometry.PointCloud, min_bound, max_bound):
+    ply = ply.remove_duplicated_points()
+    import matplotlib.pyplot as plt
+    # # Flip it, otherwise the pointcloud will be upside down.
+    # ply.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+    with o3d.utility.VerbosityContextManager(
+            o3d.utility.VerbosityLevel.Debug) as cm:
+        labels = np.array(
+            ply.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
+
+    max_label = labels.max()
+    print(f"point cloud has {max_label + 1} clusters")
+    colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
+    colors[labels < 0] = 0
+    ply.colors = o3d.utility.Vector3dVector(colors[:, :3])
+
+    largest_cluster_idx = labels.argmax()
+    triangles_to_remove = labels != largest_cluster_idx
+
+    o3d.visualization.draw([ply])
