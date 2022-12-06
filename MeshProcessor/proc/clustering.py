@@ -1,8 +1,59 @@
 import copy
+from pathlib import Path
+import tensorflow as tf
+from tf_bodypix.api import download_model, load_model, BodyPixModelPaths
 import numpy as np
 import open3d as o3d
 from scipy.stats import mode
 from sklearn.cluster import KMeans
+
+
+def get_parts(path, name):
+    # setup input and output paths
+    output_path = Path('./images/parts')
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # local_input_path = tf.keras.utils.get_file(origin=input_url)
+    local_input_path = path
+    print(local_input_path)
+    # load model (once)
+    bodypix_model = load_model(download_model(
+        BodyPixModelPaths.MOBILENET_FLOAT_50_STRIDE_16
+    ))
+
+    # get prediction result
+    image = tf.keras.preprocessing.image.load_img(local_input_path)
+    image_array = tf.keras.preprocessing.image.img_to_array(image)
+    result = bodypix_model.predict_single(image_array)
+
+    # simple mask
+    mask = result.get_mask(threshold=0.75)
+    tf.keras.preprocessing.image.save_img(
+        f'{output_path}/' + name + 'output-mask.jpg',
+        mask
+    )
+
+    # colored mask (separate colour for each body part)
+    colored_mask = result.get_colored_part_mask(mask)
+    tf.keras.preprocessing.image.save_img(
+        f'{output_path}/' + name + 'colored-mask.jpg',
+        colored_mask
+    )
+
+    # poses
+    from tf_bodypix.draw import draw_poses  # utility function using OpenCV
+
+    poses = result.get_poses()
+    image_with_poses = draw_poses(
+        image_array.copy(),  # create a copy to ensure we are not modifing the source image
+        poses,
+        keypoints_color=(255, 100, 100),
+        skeleton_color=(100, 100, 255)
+    )
+    tf.keras.preprocessing.image.save_img(
+        f'{output_path}/' + name + 'total-mask.jpg',
+        image_with_poses
+    )
 
 
 def get_largest_cluster(ply: o3d.geometry.PointCloud):
@@ -15,8 +66,7 @@ def get_largest_cluster(ply: o3d.geometry.PointCloud):
     largest_label = mode(labels, keepdims=False).mode.item()
     largest_idx = np.where(labels == largest_label)[0]
     largest_cluster = ply.select_by_index(largest_idx.tolist())
-    parts = separate_skin_cloth(largest_cluster)
-    return largest_cluster, parts
+    return largest_cluster
 
 
 def separate_skin_cloth(ply: o3d.geometry.PointCloud):

@@ -2,7 +2,7 @@ import copy
 import os
 import open3d as o3d
 import numpy as np
-from utilities.yaml_config import YamlConfig
+from util.yaml_config import YamlConfig
 
 
 def get_yaml(path):
@@ -94,6 +94,18 @@ def load_ply(root, filename, cam_loc, **kwargs):
 def load_mesh(root, filename):
     mesh = o3d.io.read_triangle_mesh(os.path.join(root, filename))
     return mesh
+
+
+def load_meshes(path):
+    meshes = dict()
+    file_list = os.listdir(path)
+    file_list = [file for file in file_list if '.glb' in file]
+    for ms in file_list:
+        filename = ms.replace('.glb', '').lower()
+        mesh = load_mesh(root=path, filename=ms)
+        meshes[filename] = mesh
+        o3d.visualization.draw_geometries([mesh])
+    return meshes
 
 
 def load_pcds(path, cam_loc=None):

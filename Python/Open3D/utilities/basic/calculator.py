@@ -1,8 +1,8 @@
-from numba import jit
+from numba import njit
 import numpy as np
 
 
-@jit(nopython=True)
+@njit(nopython=True)
 def distance_matrix3(a: np.array, b: np.array):
     euc = 0.0
     for idx in range(len(a)):

@@ -247,6 +247,7 @@ def mesh_script(root):
     mesh = meshing.gen_tri_mesh(combined)
     files.write_tri_mesh(mesh, '../data/me/mesh.ply', './')
 
+
 if __name__ == '__main__':
     root_dir = r"../data/me"
     mesh_script(root_dir)
