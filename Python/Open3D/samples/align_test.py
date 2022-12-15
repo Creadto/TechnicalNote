@@ -30,7 +30,7 @@ def transform_test():
             target_pcd = target_pcd.translate((offset_unit * idx, 0, offset_unit * idx))
             target_pcd = target_pcd.rotate(r)
             new_pcds.append(target_pcd)
-        origin_pcd.paint_uniform_color((0.5, 0.1, 0.1))
+        origin_pcd.paint_uniform_color((0.5, 0.1, 0.1))0
         pcds.append(origin_pcd)
 
     o3d.visualization.draw_geometries(pcds + new_pcds)

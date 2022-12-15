@@ -10,10 +10,10 @@ def draw_image(backboard, points, colors):
     for idx in  range(len(points)):
         y = points[idx, 1]
         x = int(np.linalg.norm((points[idx, 0], points[idx, 2])))
-        y_min = int(y-1)
-        y_max = int(y+2)
-        x_min = int(x-1)
-        x_max = int(x+2)
+        y_min = int(y-2)
+        y_max = int(y+3)
+        x_min = int(x-2)
+        x_max = int(x+3)
         backboard[y_min:y_max, x_min:x_max, :] = colors[idx, :]
     return backboard
 
@@ -34,6 +34,7 @@ def convert_img(pcd: o3d.geometry.PointCloud, resolution: int = 500, padding: fl
     img_width = (width + padding) * resolution
     img_height = (height + padding) * resolution
     image_array = np.zeros((int(img_height), int(img_width), 3))
+    image_array[:, :, 1] = 0.6
 
     # translate min_bound to (0, 0, 0)
     points = np.asarray(target_object.points)
