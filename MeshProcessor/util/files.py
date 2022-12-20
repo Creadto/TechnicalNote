@@ -134,6 +134,38 @@ def clone_ply(ply, root, filename):
     return os.path.join(root, filename)
 
 
+def make_ply_header(path, comment, vertex):
+    headers = ['ply', 'format ascii 1.0',
+               'comment ', 'element vertex ',
+               'property float x', 'property float y', 'property float z',
+               'property uchar red', 'property uchar green', 'property uchar blue', 'property uchar alpha',
+               'element face 0', 'property list uchar int vertex_indices', 'end_header']
+
+    new_f = open(path, 'w')
+    for header in headers:
+        if "comment" in header:
+            line = header + comment
+        elif "element vertex" in header:
+            vertex_len = 0
+            for dir_vertex in vertex:
+                vertex_len += len(dir_vertex[0])
+            line = header + str(vertex_len)
+        else:
+            line = header
+        line = line + '\n'
+        new_f.write(line)
+
+    for dir_vertex in vertex:
+        x_set, y_set, z_set, rgb_set = dir_vertex
+        for x, y, z, rgb in zip(x_set, y_set, z_set, rgb_set):
+            r, g, b = rgb
+            line = f"{x:.8f} {y:.8f} {z:.8f} "
+            line += "%d %d %d 255\n" % (r, g, b)
+            new_f.write(line)
+    new_f.close()
+    return new_f
+
+
 def trim_ply(ply, begin, end, root, filename):
     ascii_path = clone_ply(ply, root, filename)
     f = open(ascii_path, 'r')

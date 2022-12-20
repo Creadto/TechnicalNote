@@ -9,12 +9,14 @@ import open3d as o3d
 def draw_image(backboard, points, colors):
     for idx in  range(len(points)):
         y = points[idx, 1]
-        x = int(np.linalg.norm((points[idx, 0], points[idx, 2])))
+        xz = np.array(points[idx, (0, 2)])
+        x = int(np.linalg.norm(xz))
         y_min = int(y-2)
         y_max = int(y+3)
         x_min = int(x-2)
         x_max = int(x+3)
-        backboard[y_min:y_max, x_min:x_max, :] = colors[idx, :]
+        backboard[y_min:y_max, x_min:x_max, 0:3] = colors[idx, :]
+        backboard[y_min:y_max, x_min:x_max, 3:5] = xz
     return backboard
 
 
@@ -33,7 +35,7 @@ def convert_img(pcd: o3d.geometry.PointCloud, resolution: int = 500, padding: fl
     # make empty image
     img_width = (width + padding) * resolution
     img_height = (height + padding) * resolution
-    image_array = np.zeros((int(img_height), int(img_width), 3))
+    image_array = np.zeros((int(img_height), int(img_width), 5))
     image_array[:, :, 1] = 0.6
 
     # translate min_bound to (0, 0, 0)
@@ -45,7 +47,7 @@ def convert_img(pcd: o3d.geometry.PointCloud, resolution: int = 500, padding: fl
     norm_points = norm_points.round()
     image_rgb = draw_image(image_array, norm_points.astype(np.uint), np.asarray(target_object.colors))
 
-    return np.rot90(image_rgb, 2)
+    return np.rot90(image_rgb[:, :, 0:3], 2), np.rot90(image_rgb[:, :, 3:5], 2)
 
 
 # region measurement

@@ -67,20 +67,22 @@ def get_parts(path, name):
         blend
     )
 
-    # poses
-    from tf_bodypix.draw import draw_poses  # utility function using OpenCV
+    # # poses
+    # from tf_bodypix.draw import draw_poses  # utility function using OpenCV
+    #
+    # poses = result.get_poses()
+    # image_with_poses = draw_poses(
+    #     image_array.copy(),  # create a copy to ensure we are not modifing the source image
+    #     poses,
+    #     keypoints_color=(255, 100, 100),
+    #     skeleton_color=(100, 100, 255)
+    # )
+    # tf.keras.preprocessing.image.save_img(
+    #     f'{output_path}/' + name + 'total-mask.jpg',
+    #     image_with_poses
+    # )
 
-    poses = result.get_poses()
-    image_with_poses = draw_poses(
-        image_array.copy(),  # create a copy to ensure we are not modifing the source image
-        poses,
-        keypoints_color=(255, 100, 100),
-        skeleton_color=(100, 100, 255)
-    )
-    tf.keras.preprocessing.image.save_img(
-        f'{output_path}/' + name + 'total-mask.jpg',
-        image_with_poses
-    )
+    return colored_mask
 
 
 def get_largest_cluster(ply: o3d.geometry.PointCloud):
