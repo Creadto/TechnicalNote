@@ -3,7 +3,7 @@ import copy
 import numpy as np
 from util.files import load_pcds, load_meshes, get_filename, get_position, load_ply, make_ply_header, write_tri_mesh
 from proc.preprocessing import convert_img
-from proc.meshing import gen_tri_mesh
+from proc.meshing import gen_tri_mesh, combine_pcds
 from proc.clustering import get_largest_cluster, get_parts
 import open3d as o3d
 import cv2
@@ -45,10 +45,52 @@ def transform_test(root):
 
 def change_filename(root):
     file_list = os.listdir(root)
-    file_list = [file for file in file_list if 'Loaded' in file]
+    file_list = [file for file in file_list if '.ply' in file]
     for file in file_list:
         filename = get_filename(os.path.join(root, file)) + '.ply'
         os.rename(os.path.join(root, file), os.path.join(root, filename))
+
+
+def to_xyz(root):
+    pcds = load_pcds(root)
+
+    offset = 1.5
+    new_pcds = []
+    cnt = 0
+    for name, pcd in pcds.items():
+        lower = name.lower()
+        new_pcd = copy.deepcopy(pcd)
+        if "back" in lower:
+            R = pcd.get_rotation_matrix_from_xyz((0, np.pi, 0))
+            new_pcd.translate((offset, 0, offset))
+        elif "left" in lower:
+            R = pcd.get_rotation_matrix_from_xyz((0, np.pi / 2, 0))
+            new_pcd.translate((-offset, 0, offset))
+        elif "right" in lower:
+            R = pcd.get_rotation_matrix_from_xyz((0, np.pi * 1.6, 0))
+            new_pcd.translate((0.35, 0, 0.05))
+        else:
+            R = pcd.get_rotation_matrix_from_xyz((0, 0, 0))
+            new_pcd.translate((-offset, 0, -offset))
+
+        new_pcd = new_pcd.rotate(R)
+        # if "right" in lower:
+        #     # new_pcd.translate((-0.0159, 0, 0.0547))
+        #     new_pcd.translate((-0.05, 0, 0.05))
+        # if "front" in lower:
+        #     new_pcd.translate((0.05, 0, -0.05))
+        # new_pcd.transform(cam_locs[cnt].T)
+        cnt += 1
+        # new_pcd = get_largest_cluster(new_pcd)
+        new_pcds.append(new_pcd)
+
+    combined = combine_pcds(new_pcds, True)
+    meshed = gen_tri_mesh(combined)
+    write_tri_mesh(path='test_mesh.ply', mesh=meshed)
+    tgt = load_ply(root, 'combined.xyz', None)
+    new_pack = o3d.geometry.PointCloud()
+    o3d.visualization.draw_geometries([combined])
+    o3d.io.write_point_cloud(filename=os.path.join(root, 'combined.xyz'), pointcloud=combined, write_ascii=True)
 
 
 def matching_parts(**result):
@@ -78,7 +120,7 @@ def matching_parts(**result):
     depth_xy = copy.deepcopy(result['depth'])
     resolution = result['res']
 
-    name_flow = ['front', 'left', 'back', 'right']
+    name_flow = ['front', 'right', 'back', 'left']
     origin_location = np.array([0.0, 0.0, 0.0])
     # y 값으로 깊이를 매칭하고 green으로 추출한다.
     for label in labels:
@@ -120,29 +162,34 @@ def matching_parts(**result):
             real_y = real_y / resolution
             origin_y = real_y[origin_index].min()
             real_y = real_y - origin_y
-            next_y = real_y[origin_index].max()
 
             real_z -= real_z.min()
-            real_z *= 0.0
+            #real_z *= 0.0
 
             # tuple 만들기 x, y, z, red, green, blue, alpha
             if name == 'left':
-                real_y, real_z = real_z, -1 * real_y
-            elif name == 'back':
-                real_y, real_z = -1 * real_y, -1 * real_z
+                real_y, real_z = -1 * real_z, -1 * real_y
             elif name == 'right':
                 real_y, real_z = -1 * real_z, real_y
-            else:
-                origin_location[0] = real_x.min()
-                origin_location[1] = next_y
-                origin_location[2] = real_z[real_y[origin_index].argmin()]
 
             real_x += origin_location[0]
             real_y += origin_location[1]
             real_z += origin_location[2]
 
+            if name == 'front':
+                next_y = real_y[origin_index].max()
+                # origin_location[0] = real_x[real_y[origin_index].argmax()]
+                origin_location[1] = next_y + 0.03
+                origin_location[2] = real_z[real_y[origin_index].argmax()]
+            elif name == 'back':
+                origin_location[1] = real_y[origin_index].max() - 0.08
+                origin_location[2] = real_z[real_y[origin_index].argmax()]
+            elif name == 'right':
+                origin_location[1] = real_y[real_z[origin_index].argmax()] - 0.13
+                origin_location[2] = real_z[origin_index].max()
+
             vertex_xyzrgb.append((real_y, real_x, real_z, rgb))
-        # 새로운 ply 양식 만들기
+            # 새로운 ply 양식 만들기
         make_ply_header(path='./images/' + label + '.ply',
                         vertex=vertex_xyzrgb,
                         comment=label)
@@ -153,9 +200,10 @@ def matching_parts(**result):
 
 def main():
     dev_root = r'./data'
-    proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
     change_filename(dev_root)
-    # transform_test(dev_root)
+    to_xyz(root=dev_root)
+    proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
+    #transform_test(dev_root)
     pcds = load_pcds(dev_root)
     # pcds = load_meshes(dev_root)
     for name, pcd in pcds.items():

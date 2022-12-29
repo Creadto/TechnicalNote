@@ -10,18 +10,19 @@ def get_yaml(path):
 
 
 def get_position(ply_path):
-    ply_file = open(ply_path, 'r')
-    while True:
-        line = ply_file.readline()
-        if "lastCameraTransform" in line:
-            begin = line.find('[')
-            value_string = line[begin:-2]
-            value_string = value_string.replace('[', '')
-            value_string = value_string.replace(']', '')
-            vector_string = value_string.split(',')
-            vector = [float(value) for value in vector_string]
-            matrix = np.array(vector).reshape((4, 4))
-            return matrix
+    return np.ones((4, 4))
+    # ply_file = open(ply_path, 'r')
+    # while True:
+    #     line = ply_file.readline()
+    #     if "lastCameraTransform" in line:
+    #         begin = line.find('[')
+    #         value_string = line[begin:-2]
+    #         value_string = value_string.replace('[', '')
+    #         value_string = value_string.replace(']', '')
+    #         vector_string = value_string.split(',')
+    #         vector = [float(value) for value in vector_string]
+    #         matrix = np.array(vector).reshape((4, 4))
+    #         return matrix
 
 
 def get_filename(ply_path):
@@ -213,3 +214,26 @@ def crop_ply(ply: o3d.geometry.PointCloud, min_bound, max_bound):
     triangles_to_remove = labels != largest_cluster_idx
 
     o3d.visualization.draw([ply])
+
+
+def main_cut(path):
+    f = open(path, 'r')
+    new_f = open('./Bug_Cut_Cut.ply', 'w')
+    while True:
+        line = f.readline()
+        if len(line) == 0:
+            return
+        batch = line.split(' ')
+        if len(batch) < 7:
+            continue
+        if float(batch[3]) < 0.4:
+            new_f.write(line)
+    f.close()
+    new_f.close()
+
+    new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'), cam_loc=None)
+    return new_pcd
+
+
+if __name__ == '__main__':
+    main_cut('./Bug_Cut.ply')
