@@ -1,13 +1,26 @@
 import os
 import time
 import threading
+import cv2
 from multiprocessing import Process
+from proc.preprocessing import convert_img
+from proc.calculating import measure_bodies
+from proc.clustering import get_parts
 from json import dumps
-
 import proc.meshing as meshing
 from http.server import BaseHTTPRequestHandler
 from util.comm_manager import HttpServer
 import util.files as files
+from util.yaml_config import YamlConfig
+from yaml import dump
+import json
+
+
+def dumper(obj):
+    try:
+        return obj.toJSON()
+    except:
+        return obj.__dict__
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -20,16 +33,23 @@ class RequestHandler(BaseHTTPRequestHandler):
         memory_count = int(self.headers['Content-Length'])
         receive_data = self.rfile.read(memory_count)
         status = 'Idle'
-        data = ""
+        data = None
         if memory_count < 200:
             receive_data = receive_data.decode()
             # State check
             file_list = os.listdir(path)
-            check_list = ['Meshed', 'Loaded', 'Received']
+            check_list = ['Meshed', 'Loaded', 'Front', 'Received', 'Measured']
             for check in check_list:
                 check_files = [file for file in file_list if check in file]
                 if len(check_files) > 0:
                     status = check
+                    if status == 'Measured':
+                        in_file = YamlConfig.get_dict(os.path.join(path, "Measured.yaml"))
+                        os.remove(os.path.join(path, "Measured.yaml"))
+                        #data = dump(in_file)
+                        data = json.dumps(in_file)
+                    elif status == 'Front':
+                        status = 'Calculating'
                     break
             if "mesh" in receive_data.lower():
                 if status == 'Meshed':
@@ -121,12 +141,29 @@ class HttpProvider:
             loaded_path = os.path.join(self.storage_path, load_name)
             files.convert_http_ply(os.path.join(self.storage_path, file_name), loaded_path)
             os.remove(os.path.join(self.storage_path, file_name))
-            camera_location = files.get_position(loaded_path)
-            pcd = files.load_ply(root='', filename=loaded_path, cam_loc=camera_location)
-            pcds.append(pcd)
+
         self.NewMessage = None
 
-        pcd = meshing.combine_pcds(pcds=pcds, down_sampling=False)
+        proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
+        pcds = files.load_pcds(self.storage_path)
+
+        for name, pcd in pcds.items():
+            # pcd = get_largest_cluster(pcd)
+            img_rgb, depth = convert_img(pcd)
+            img_bgr = img_rgb[..., ::-1]
+            cv2.imwrite(os.path.join('./images', name + '.jpg'), img_bgr * 255)
+            mask = get_parts(os.path.join('./images', name + '.jpg'), name)
+
+            proc_result['images'][name] = img_rgb
+            proc_result['masks'][name] = mask
+            proc_result['pcds'][name] = pcd
+            proc_result['depth'][name] = depth
+        proc_result['res'] = 500
+        proc_result['template'] = None
+        output = measure_bodies(**proc_result)
+        YamlConfig.write_yaml(os.path.join(self.storage_path, './Measured.yaml'), output)
+
+        pcd = meshing.combine_pcds(pcds=pcds['Front'], down_sampling=False)
         mesh = meshing.gen_tri_mesh(pcd)
         files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
         for idx, file_name in enumerate(file_list):

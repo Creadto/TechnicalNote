@@ -87,8 +87,6 @@ def load_ply(root, filename, cam_loc, **kwargs):
         else:
             pcd.transform(np.identity(4))
 
-    r = pcd.get_rotation_matrix_from_xyz((0, np.pi / 2, 0))
-    pcd = pcd.rotate(r)
     return pcd
 
 
@@ -114,7 +112,7 @@ def load_pcds(path, cam_loc=None):
     file_list = os.listdir(path)
     file_list = [file for file in file_list if '.ply' in file]
     for ply in file_list:
-        filename = ply.replace('.ply', '').lower()
+        filename = get_filename(os.path.join(path, ply))
         if cam_loc is None:
             cam_loc = get_position(ply_path=os.path.join(path, ply))
         pcd = load_ply(root=path, filename=ply, cam_loc=cam_loc)

@@ -3,7 +3,8 @@ from copy import deepcopy
 import os
 
 import pandas as pd
-import yaml
+from yaml import load, dump, YAMLError
+from yaml import Loader, Dumper
 
 
 class YamlConfig:
@@ -16,8 +17,8 @@ class YamlConfig:
 
         with open(config_dir.format(self.root_path, "{}.yaml".format(default_name)), "r") as f:
             try:
-                default_config = yaml.load(f, Loader=yaml.FullLoader)
-            except yaml.YAMLError as exc:
+                default_config = load(f, Loader=Loader)
+            except YAMLError as exc:
                 assert False, "default.yaml error: {}".format(exc)
 
         self.final_config_dict = default_config
@@ -47,12 +48,17 @@ class YamlConfig:
 
     @staticmethod
     def get_dict(path):
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             try:
-                sub_dict = yaml.load(f, Loader=yaml.FullLoader)
-            except yaml.YAMLError as exc:
+                sub_dict = load(f, Loader=Loader)
+            except YAMLError as exc:
                 assert False, "{}.yaml error: {}".format('sc2', exc)
         return sub_dict
+
+    @staticmethod
+    def write_yaml(full_path, file):
+        with open(full_path, 'w') as f:
+            dump(file, f)
 
     @staticmethod
     def select_algorithm(self, args):

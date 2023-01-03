@@ -1,0 +1,122 @@
+measurement:
+  # --- Info ---
+  name: RLFPSv4
+  custom_colors:
+    [[110, 64, 170], [110, 64, 170], [178, 60, 178], [178, 60, 178],
+     [238, 67, 149], [238, 67, 149], [255, 94, 99], [255, 94, 99],
+     [255, 140, 56], [255, 140, 56], [255, 94, 99], [255, 140, 56],
+     [175, 240, 91], [175, 240, 91], [96, 247, 96], [96, 247, 96],
+     [40, 234, 141], [40, 234, 141], [26, 199, 194], [26, 199, 194],
+     [47, 150, 224], [47, 150, 224], [26, 199, 194], [47, 150, 224]]
+
+  part_labels:
+    ['leftFace', 'rightFace', 'leftUpperArmBack', 'leftUpperArmFront',
+     'rightUpperArmBack', 'rightUpperArmFront', 'leftLowerArmBack', 'leftLowerArmFront',
+     'rightLowerArmBack', 'rightLowerArmFront', 'leftHand', 'rightHand',
+     'torsoFront', 'torsoBack', 'leftUpperLegFront', 'leftUpperLegBack',
+     'rightUpperLegFront', 'rightUpperLegBack', 'leftLowerLegFront', 'leftLowerLegBack',
+     'rightLowerLegFront', 'rightLowerLegBack', 'leftFeet', 'rightFeet']
+
+  rely_on:
+    "X_Measure_1001": "pixel" # 앞 얼굴 중심 너비
+    "X_Measure_1002": "pixel" # 목 밑 둘레
+    "X_Measure_1003": "pixel" # 앞 품
+    "X_Measure_1004": "pixel" # 가슴 둘레
+    "X_Measure_1005": "pixel" # 허리 둘레
+    "X_Measure_1006": "pixel" # 힙둘레
+    "X_Measure_1007": "pixel" # 허벅지 둘레
+    "X_Measure_1008": "pixel" # 허벅지 중간 둘레
+    "X_Measure_1009": "pixel" # 무릎 둘레
+    "X_Measure_1010": "pixel" # 종아리 둘레
+    "X_Measure_1011": "pixel" # 발목 둘레
+    "X_Measure_1101": "mask" # 앞 얼굴 중심 길이
+    "X_Measure_1102": "mask" # 유장
+    "X_Measure_1103": "mask" # 앞 길이
+    "X_Measure_1104": "mask" # 앞 중심 길이
+    "X_Measure_2001": "mask" # 겨드랑 너비
+    "X_Measure_2002": "mask" # 암홀 둘레
+    "X_Measure_2101": "mask" # 무릎 위치
+    "X_Measure_2102": "mask" # 무릎 높이
+    "X_Measure_3001": "pixel" # 옆 얼굴 중심 너비
+    "X_Measure_3002": "mask" # 어깨 너비 [Max - Min]
+    "X_Measure_3003": "mask" # 등품
+    "X_Measure_3004": "pixel" # 손목 둘레
+    "X_Measure_3005": "pixel" # 윗팔 둘레
+    "X_Measure_3006": "pixel" # 팔꿈치 둘레
+    "X_Measure_3101": "pixel" # 팔꿈치 기장
+    "X_Measure_3102": "pixel" # 몸통수직길이
+    "X_Measure_3103": "pixel" # 엉덩이수직길이
+    "X_Measure_3104": "pixel" # 엉덩이 길이
+    "X_Measure_3105": "mask" # 등 길이
+
+  # --- Parts ---
+  check_points:
+    front_width:
+      face:
+        "0.5": "X_Measure_1001" # 앞 얼굴 중심 너비
+        "0.9": "X_Measure_1002" # 목 밑 둘레
+      torso:
+        "0.2": "X_Measure_1003" # 앞 품
+        "0.4": "X_Measure_1004" # 가슴 둘레
+        "0.55": "X_Measure_1005" # 허리 둘레
+        "reserved_1": "X_Measure_1006" # 힙둘레
+      upperleg:
+        "reserved_2": "X_Measure_1007" # 허벅지 둘레
+        "0.5": "X_Measure_1008" # 허벅지 중간 둘레
+        "0.9": "X_Measure_1009" # 무릎 둘레
+      lowerleg:
+        "0.7": "X_Measure_1010" # 종아리 둘레
+        "0.9": "X_Measure_1011" # 발목 둘레
+    front_height:
+      face:
+        "0.5": "X_Measure_1101" # 앞 얼굴 중심 길이
+      torso:
+        "0.4": "X_Measure_1102" # 유장
+        "0.55": "X_Measure_1103" # 앞 길이
+        "reserved_3": "X_Measure_1104" # 앞 중심 길이
+
+    right_width:
+      upperarm:
+        "0.4": "X_Measure_2001" # 겨드랑 너비
+        "reserved_4": "X_Measure_2002" # 암홀 둘레
+
+    right_height:
+      leg:
+        "reserved_5": "X_Measure_2101" # 무릎 위치
+        "reserved_6": "X_Measure_2102" # 무릎 높이
+
+    back_width:
+      face:
+        "0.5": "X_Measure_3001" # 옆 얼굴 중심 너비
+      torso:
+        "reserved_7": "X_Measure_3002" # 어깨 너비 [Max - Min]
+        "0.4": "X_Measure_3003" # 등품
+      arm: # 둘 중 짧은 걸 선택
+        "0.9": "X_Measure_3004" # 손목 둘레
+      upperarm: # 둘 중 짧은 걸 선택
+        "0.5": "X_Measure_3005" # 윗팔 둘레
+        "0.9": "X_Measure_3006" # 팔꿈치 둘레
+
+    back_height:
+      upperarm:
+        "reserved_8": "X_Measure_3101" # 팔꿈치 기장
+      upperleg:
+        "reserved_9": "X_Measure_3102" # 몸통수직길이
+        "reserved_10": "X_Measure_3103" # 엉덩이수직길이
+        "reserved_11": "X_Measure_3104" # 엉덩이 길이
+      torso:
+        "0.55": "X_Measure_3105" # 등 길이
+
+    # --- Parts ---
+    reserved:
+      "reserved_1": 0.915
+      "reserved_2": 0.546
+      "reserved_3": 0.343
+      "reserved_4": 0.388
+      "reserved_5": 0.533
+      "reserved_6": 0.411
+      "reserved_7": 0.381
+      "reserved_8": 0.318
+      "reserved_9": 0.636
+      "reserved_10": 0.259
+      "reserved_11": 0.188
