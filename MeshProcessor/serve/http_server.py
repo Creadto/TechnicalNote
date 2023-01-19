@@ -162,13 +162,13 @@ class HttpProvider:
         proc_result['template'] = None
         output = measure_bodies(**proc_result)
         YamlConfig.write_yaml(os.path.join(self.storage_path, './Measured.yaml'), output)
-
-        pcd = meshing.combine_pcds(pcds=pcds['Front'], down_sampling=False)
-        mesh = meshing.gen_tri_mesh(pcd)
-        files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
         for idx, file_name in enumerate(file_list):
             load_name = "Loaded" + str(idx) + ".ply"
             os.remove(os.path.join(self.storage_path, load_name))
+
+        #pcd = meshing.combine_pcds(pcds=pcds['front'], down_sampling=False)
+        mesh = meshing.gen_tri_mesh(pcds['front'])
+        files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
 
     def binder(self):
         self.server = HttpServer(ip=self.ip, port=self.port, listener=self.listener, handler=RequestHandler)

@@ -108,15 +108,15 @@ measurement:
         "0.55": "X_Measure_3105" # 등 길이
 
     # --- Parts ---
-    reserved:
-      "reserved_1": 0.915
-      "reserved_2": 0.546
-      "reserved_3": 0.343
-      "reserved_4": 0.388
-      "reserved_5": 0.533
-      "reserved_6": 0.411
-      "reserved_7": 0.381
-      "reserved_8": 0.318
-      "reserved_9": 0.636
-      "reserved_10": 0.259
-      "reserved_11": 0.188
+  reserved:
+    "reserved_1": 0.915
+    "reserved_2": 0.546
+    "reserved_3": 0.343
+    "reserved_4": 0.388
+    "reserved_5": 0.533
+    "reserved_6": 0.411
+    "reserved_7": 0.381
+    "reserved_8": 0.318
+    "reserved_9": 0.636
+    "reserved_10": 0.259
+    "reserved_11": 0.188

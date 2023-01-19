@@ -116,7 +116,7 @@ def load_pcds(path, cam_loc=None):
         if cam_loc is None:
             cam_loc = get_position(ply_path=os.path.join(path, ply))
         pcd = load_ply(root=path, filename=ply, cam_loc=cam_loc)
-        pcds[filename] = pcd
+        pcds[filename.lower()] = pcd
     return pcds
 
 

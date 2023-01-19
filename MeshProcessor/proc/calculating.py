@@ -87,9 +87,10 @@ def measure_bodies(**kwargs):
                         value = max(target) - min(target)
                     else:
                         value = pivot
+                    output[code] = copy.deepcopy(round(value.item() * 100, 3))
                 else:
                     value = template['reserved'][threshold]
-                output[code] = copy.deepcopy(value.item())
+                    output[code] = copy.deepcopy(round(value * 100, 3))
 
     YamlConfig.write_yaml('./Measure.yaml', output)
     return output
