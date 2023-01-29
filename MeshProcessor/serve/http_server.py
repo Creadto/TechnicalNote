@@ -1,7 +1,11 @@
 import os
 import time
 import threading
+import subprocess
+import shutil
 import cv2
+import numpy as np
+from util.files import change_filename, load_mesh, write_tri_mesh
 from multiprocessing import Process
 from proc.preprocessing import convert_img
 from proc.calculating import measure_bodies
@@ -38,7 +42,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             receive_data = receive_data.decode()
             # State check
             file_list = os.listdir(path)
-            check_list = ['Meshed', 'Loaded', 'Front', 'Received', 'Measured']
+            check_list = ['Received', 'Loaded', 'Measured', 'Meshing', 'Meshed']
             for check in check_list:
                 check_files = [file for file in file_list if check in file]
                 if len(check_files) > 0:
@@ -46,7 +50,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     if status == 'Measured':
                         in_file = YamlConfig.get_dict(os.path.join(path, "Measured.yaml"))
                         os.remove(os.path.join(path, "Measured.yaml"))
-                        #data = dump(in_file)
+                        # data = dump(in_file)
                         data = json.dumps(in_file)
                     elif status == 'Front':
                         status = 'Calculating'
@@ -55,8 +59,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if status == 'Meshed':
                     in_file = open(os.path.join(path, "Meshed.ply"), "rb")
                     data = in_file.read()
-                    os.remove(os.path.join(path, "Meshed.ply"))
                     self.wfile.write(data)
+                    in_file.close()
+                    os.remove(os.path.join(path, "Meshed.ply"))
                     return
                 else:
                     status = "Invalid"
@@ -114,8 +119,18 @@ class HttpProvider:
 
         self.ip = ip
         self.port = port
-        self.storage_path = os.path.dirname(os.path.abspath(__file__))
+        self.server_path = os.path.dirname(os.path.abspath(__file__))
+        self.data_path = os.path.join(self.server_path, '../data')
+        self.script_path = os.path.join(self.server_path, '../script')
         self.server = None
+
+        # Cleaning
+        folders = os.listdir(self.data_path)
+        for folder in folders:
+            shutil.rmtree(os.path.join(self.data_path, folder))
+            os.mkdir(os.path.join(self.data_path, folder))
+
+        # Get configuration file
 
         self.NewMessage = None
         self.p = Process(target=self.binder)
@@ -133,51 +148,91 @@ class HttpProvider:
         self.p.join()
 
     def mesh_seq(self):
-        pcds = []
-        file_list = os.listdir(self.storage_path)
+        file_list = os.listdir(self.server_path)
         file_list = [file for file in file_list if 'Re' in file]
         for idx, file_name in enumerate(file_list):
             load_name = "Loaded" + str(idx) + ".ply"
-            loaded_path = os.path.join(self.storage_path, load_name)
-            files.convert_http_ply(os.path.join(self.storage_path, file_name), loaded_path)
-            os.remove(os.path.join(self.storage_path, file_name))
+            loaded_path = os.path.join(self.server_path, load_name)
+            files.convert_http_ply(os.path.join(self.server_path, file_name), loaded_path)
+            os.remove(os.path.join(self.server_path, file_name))
+            shutil.copy(loaded_path, os.path.join(self.data_path, 'pointclouds'))
 
         self.NewMessage = None
-
+        change_filename(os.path.join(self.data_path, 'pointclouds'))
         proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
-        pcds = files.load_pcds(self.storage_path)
-
+        pcds = files.load_pcds(os.path.join(self.data_path, 'pointclouds'), imme_remove=False)
+        face_color = None
+        total_height = 1.73
         for name, pcd in pcds.items():
             # pcd = get_largest_cluster(pcd)
-            img_rgb, depth = convert_img(pcd)
+            img_rgb, depth = convert_img(pcd, padding=0.0)
             img_bgr = img_rgb[..., ::-1]
-            cv2.imwrite(os.path.join('./images', name + '.jpg'), img_bgr * 255)
-            mask = get_parts(os.path.join('./images', name + '.jpg'), name)
+            cv2.imwrite(os.path.join(self.data_path, 'images', name + '.jpg'), img_bgr * 255)
+            mask = get_parts(os.path.join(self.data_path, 'images', name + '.jpg'), name)
 
             proc_result['images'][name] = img_rgb
             proc_result['masks'][name] = mask
             proc_result['pcds'][name] = pcd
             proc_result['depth'][name] = depth
+            if 'front' not in name:
+                os.remove(os.path.join(self.data_path, 'images', name + '.jpg'))
+            else:
+                face_mask = [110, 64, 170]
+                mask = mask[:, :, 1]
+                height_x, height_y = np.where(mask != 0)
+                total_height = ((height_x.max() - height_x.min()) / 500.0)
+                total_height = round((total_height * 100.0) + 3.2, 2)
+                part_x, part_y = np.where(mask == face_mask[1])
+                face_color = img_rgb[((part_x.max() - part_x.min()) // 4) + part_x.min(),
+                             ((part_y.max() - part_y.min()) // 2) + part_y.min(), :]
+                print(face_color * 2)
+                print(total_height)
+
         proc_result['res'] = 500
         proc_result['template'] = None
+        proc_result['total_height'] = total_height
         output = measure_bodies(**proc_result)
-        YamlConfig.write_yaml(os.path.join(self.storage_path, './Measured.yaml'), output)
+        YamlConfig.write_yaml(os.path.join(self.server_path, './Measured.yaml'), output)
         for idx, file_name in enumerate(file_list):
             load_name = "Loaded" + str(idx) + ".ply"
-            os.remove(os.path.join(self.storage_path, load_name))
+            os.remove(os.path.join(self.server_path, load_name))
 
-        #pcd = meshing.combine_pcds(pcds=pcds['front'], down_sampling=False)
-        mesh = meshing.gen_tri_mesh(pcds['front'])
-        files.write_tri_mesh(mesh=mesh, filename="Meshed.ply", path=self.storage_path)
+        f = open(os.path.join(self.server_path, 'Meshing.tat'), 'wb')
+        f.close()
+
+        # pose estimation
+        subprocess.call([os.path.join(self.script_path, "pose_estimation.bat")], shell=True)
+        while len(os.listdir(os.path.join(self.data_path, 'keypoints'))) == 0:
+            time.sleep(0.1)
+        file_list = os.listdir(os.path.join(self.data_path, 'keypoints'))
+        for file in file_list:
+            new_name = file.replace('000000000000_', '')
+            os.rename(os.path.join(self.data_path, 'keypoints', file),
+                      os.path.join(self.data_path, 'keypoints', new_name))
+
+        # make mesh file
+        subprocess.call([os.path.join(self.script_path, "mesh_maker.bat")], shell=True)
+        # os.system(os.path.join(self.script_path, "mesh_maker.bat"))
+        mesh_path = os.path.join(self.data_path, 'meshes', 'meshes', 'front')
+        while os.path.isdir(mesh_path) is False or os.path.isfile(os.path.join(mesh_path, '000.obj')) is False:
+            time.sleep(1.0)
+
+        # read mesh file
+        mesh_file = load_mesh(mesh_path, '000.obj')
+        #mesh_file.paint_uniform_color(face_color * 2)
+        mesh_file.paint_uniform_color([222.0 / 255.0, 171.0 / 255.0, 127.0 / 255.0])
+        write_tri_mesh(mesh_file, filename='Meshed.ply', path=os.path.join(self.server_path))
+        os.remove(os.path.join(self.server_path, 'Meshing.tat'))
 
     def binder(self):
         self.server = HttpServer(ip=self.ip, port=self.port, listener=self.listener, handler=RequestHandler)
 
     def listener(self):
         while True:
-            file_list = os.listdir(self.storage_path)
+            file_list = os.listdir(self.server_path)
             file_list = [file for file in file_list if 'Received' in file]
             if len(file_list) > 0:
-                self.NewMessage = self.storage_path
+                self.NewMessage = self.server_path
             else:
                 self.NewMessage = None
+            time.sleep(0.01)

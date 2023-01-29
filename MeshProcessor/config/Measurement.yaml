@@ -18,6 +18,7 @@ measurement:
      'rightLowerLegFront', 'rightLowerLegBack', 'leftFeet', 'rightFeet']
 
   rely_on:
+    "X_Measure_1000": "pixel" # 키
     "X_Measure_1001": "pixel" # 앞 얼굴 중심 너비
     "X_Measure_1002": "pixel" # 목 밑 둘레
     "X_Measure_1003": "pixel" # 앞 품

@@ -23,7 +23,7 @@ def convert_img(pcd: o3d.geometry.PointCloud, resolution: int = 500, padding: fl
     """
     :param pcd: a single PointCloud object
     :param resolution: means a distance from pixel to neighbor pixel meter per resolution
-    :param padding: means an white space of generated image by meter
+    :param padding: means a white space of generated image by meter
     :return:
     """
     target_object = copy.deepcopy(pcd)

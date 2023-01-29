@@ -35,6 +35,14 @@ def get_filename(ply_path):
             return value_string
 
 
+def change_filename(root):
+    file_list = os.listdir(root)
+    file_list = [file for file in file_list if '.ply' in file]
+    for file in file_list:
+        filename = get_filename(os.path.join(root, file)) + '.ply'
+        os.rename(os.path.join(root, file), os.path.join(root, filename))
+
+
 def convert_ply_to_img(pcd, path):
     render_pcd = copy.deepcopy(pcd)
     R = render_pcd.get_rotation_matrix_from_xyz((0, -np.pi / 4, 0))
@@ -107,7 +115,7 @@ def load_meshes(path):
     return meshes
 
 
-def load_pcds(path, cam_loc=None):
+def load_pcds(path, cam_loc=None, imme_remove=False):
     pcds = dict()
     file_list = os.listdir(path)
     file_list = [file for file in file_list if '.ply' in file]
@@ -117,6 +125,8 @@ def load_pcds(path, cam_loc=None):
             cam_loc = get_position(ply_path=os.path.join(path, ply))
         pcd = load_ply(root=path, filename=ply, cam_loc=cam_loc)
         pcds[filename.lower()] = pcd
+        if imme_remove:
+            os.remove(os.path.join(path, ply))
     return pcds
 
 

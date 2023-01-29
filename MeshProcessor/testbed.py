@@ -43,14 +43,6 @@ def transform_test(root):
     o3d.visualization.draw_geometries(pcds + new_pcds)
 
 
-def change_filename(root):
-    file_list = os.listdir(root)
-    file_list = [file for file in file_list if '.ply' in file]
-    for file in file_list:
-        filename = get_filename(os.path.join(root, file)) + '.ply'
-        os.rename(os.path.join(root, file), os.path.join(root, filename))
-
-
 def to_xyz(root):
     pcds = load_pcds(root)
 
@@ -198,28 +190,54 @@ def matching_parts(**result):
         draw_geometries(pcd)
 
 
-def main():
-    dev_root = r'./data'
-    #change_filename(dev_root)
-    #transform_test(root=dev_root)
-    proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
-    pcds = load_pcds(dev_root)
-    # mesh = gen_tri_mesh(pcds['front'])
-    # write_tri_mesh(mesh, filename='test.ply')
-    for name, pcd in pcds.items():
-        # pcd = get_largest_cluster(pcd)
-        img_rgb, depth = convert_img(pcd)
-        img_bgr = img_rgb[..., ::-1]
-        cv2.imwrite(os.path.join('./images', name + '.jpg'), img_bgr * 255)
-        mask = get_parts(os.path.join('./images', name + '.jpg'), name)
+def get_openpose():
+    inputWidth = 320
+    inputHeight = 240
+    inputScale = 1.0 / 255
 
-        proc_result['images'][name] = img_rgb
-        proc_result['masks'][name] = mask
-        proc_result['pcds'][name] = pcd
-        proc_result['depth'][name] = depth
-    proc_result['res'] = 500
-    proc_result['template'] = None
-    measure_bodies(**proc_result)
+    path = './data/images/ans.jpg'
+    protoFile = "./openpose/models/pose/body_25/" + "pose_deploy.prototxt"
+    weightsFile = "./openpose/models/pose/body_25/" + "pose_iter_584000.caffemodel"
+
+    # 위의 path에 있는 network 모델 불러오기
+    net = cv2.dnn.readNetFromCaffe(protoFile, weightsFile)
+
+    img_bgr = cv2.imread(path)
+    frameWidth = img_bgr.shape[1]
+    frameHeight = img_bgr.shape[0]
+
+    inpBlob = cv2.dnn.blobFromImage(img_bgr, inputScale, (inputWidth, inputHeight), (0, 0, 0), swapRB=False, crop=False)
+    imgb=cv2.dnn.imagesFromBlob(inpBlob)
+
+    net.setInput(inpBlob)
+    output = net.forward()
+    test = 1
+
+
+def main():
+    get_openpose()
+
+    # dev_root = r'./data'
+    # #change_filename(dev_root)
+    # #transform_test(root=dev_root)
+    # proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
+    # pcds = load_pcds(dev_root)
+    # # mesh = gen_tri_mesh(pcds['front'])
+    # # write_tri_mesh(mesh, filename='test.ply')
+    # for name, pcd in pcds.items():
+    #     # pcd = get_largest_cluster(pcd)
+    #     img_rgb, depth = convert_img(pcd)
+    #     img_bgr = img_rgb[..., ::-1]
+    #     cv2.imwrite(os.path.join('./images', name + '.jpg'), img_bgr * 255)
+    #     mask = get_parts(os.path.join('./images', name + '.jpg'), name)
+    #
+    #     proc_result['images'][name] = img_rgb
+    #     proc_result['masks'][name] = mask
+    #     proc_result['pcds'][name] = pcd
+    #     proc_result['depth'][name] = depth
+    # proc_result['res'] = 500
+    # proc_result['template'] = None
+    # measure_bodies(**proc_result)
 
 
 if __name__ == '__main__':
