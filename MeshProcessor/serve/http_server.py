@@ -11,12 +11,13 @@ from proc.preprocessing import convert_img
 from proc.calculating import measure_bodies
 from proc.clustering import get_parts
 from json import dumps
-import proc.meshing as meshing
+import torch
+import torch.nn as nn
+from torchvision import models
 from http.server import BaseHTTPRequestHandler
 from util.comm_manager import HttpServer
 import util.files as files
 from util.yaml_config import YamlConfig
-from yaml import dump
 import json
 
 
@@ -185,6 +186,18 @@ class HttpProvider:
                 part_x, part_y = np.where(mask == face_mask[1])
                 face_color = img_rgb[((part_x.max() - part_x.min()) // 4) + part_x.min(),
                              ((part_y.max() - part_y.min()) // 2) + part_y.min(), :]
+
+                # gender classification
+                # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # device object
+                # save_path = os.path.join(self.server_path, '../models/gender_sub/gender_classifier.pth')
+                # model = models.resnet18(pretrained=True)
+                # num_features = model.fc.in_features
+                # model.fc = nn.Linear(num_features, 2)  # binary classification (num_of_class == 2)
+                # model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
+                # model.to(device)
+                #
+                # output = model(img_rgb)
+
                 print(face_color * 2)
                 print(total_height)
 

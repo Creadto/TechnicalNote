@@ -1,22 +1,15 @@
 import os
 import copy
 import numpy as np
-from util.files import load_pcds, load_meshes, get_filename, get_position, load_ply, make_ply_header, write_tri_mesh
-from proc.preprocessing import convert_img
+from util.files import load_pcds, get_position, load_ply, make_ply_header, write_tri_mesh
 from proc.meshing import gen_tri_mesh, combine_pcds
-from proc.clustering import get_largest_cluster, get_parts
 import open3d as o3d
 import cv2
-from proc.calculating import measure_bodies
+import torch
+from util.yaml_config import YamlConfig
 
 
-def mesh_test(root):
-    pcds = load_pcds(path=root)
-    for name, pcd in pcds.items():
-        mesh = gen_tri_mesh(pcd)
-        write_tri_mesh(mesh, name + 'mesh.ply', root)
-
-
+# region deprecated
 def transform_test(root):
     file_list = os.listdir(root)
     file_list = [file for file in file_list if '.ply' in file]
@@ -85,6 +78,9 @@ def to_xyz(root):
     o3d.io.write_point_cloud(filename=os.path.join(root, 'combined.xyz'), pointcloud=combined, write_ascii=True)
 
 
+# endregion
+
+# region applied
 def matching_parts(**result):
     new_points = [0, 0, 0, 0, 0, 0, 0]
     total_model = []
@@ -156,7 +152,7 @@ def matching_parts(**result):
             real_y = real_y - origin_y
 
             real_z -= real_z.min()
-            #real_z *= 0.0
+            # real_z *= 0.0
 
             # tuple 만들기 x, y, z, red, green, blue, alpha
             if name == 'left':
@@ -190,6 +186,41 @@ def matching_parts(**result):
         draw_geometries(pcd)
 
 
+def classify_gender():
+    import torch
+    import torch.nn as nn
+    from torchvision import models
+    img_bgr = cv2.imread(r"D:\Creadto\TechnicalNote\MeshProcessor\data\images\front.jpg")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # device object
+    save_path = os.path.join(r"D:\Creadto\TechnicalNote\MeshProcessor\models\gender_sub\gender_classifier.pth")
+    model = models.resnet18(pretrained=True)
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, 2)  # binary classification (num_of_class == 2)
+    model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
+    model.to(device)
+
+    tensor_rgb = torch.tensor(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)) / 255.0
+    shape = tensor_rgb.shape
+    tensor_rgb = tensor_rgb.view([3, shape[0], shape[1]])
+    output = model(tensor_rgb.unsqueeze(dim=0))
+    gender = torch.argmax(output).item()
+
+    in_file = YamlConfig.get_dict(os.path.join(r"D:\Creadto\TechnicalNote\MeshProcessor\config\smpl", "fit_smplx.yaml"))
+    in_file['gender'] = "female" if gender == 1 else "male"
+    YamlConfig.write_yaml(r"D:\Creadto\TechnicalNote\MeshProcessor\config\smpl\fit_smplx_c.yaml", in_file)
+    print(output)
+
+
+# endregion
+
+# region non-module
+def mesh_test(root):
+    pcds = load_pcds(path=root)
+    for name, pcd in pcds.items():
+        mesh = gen_tri_mesh(pcd)
+        write_tri_mesh(mesh, name + 'mesh.ply', root)
+
+
 def get_openpose():
     inputWidth = 320
     inputHeight = 240
@@ -207,15 +238,177 @@ def get_openpose():
     frameHeight = img_bgr.shape[0]
 
     inpBlob = cv2.dnn.blobFromImage(img_bgr, inputScale, (inputWidth, inputHeight), (0, 0, 0), swapRB=False, crop=False)
-    imgb=cv2.dnn.imagesFromBlob(inpBlob)
+    imgb = cv2.dnn.imagesFromBlob(inpBlob)
 
     net.setInput(inpBlob)
     output = net.forward()
     test = 1
 
 
+def pre_mesh_seq():
+    import subprocess
+    import util.files as files
+    from proc.preprocessing import convert_img
+    from proc.clustering import get_parts
+    import shutil
+    import time
+
+    data_path = r'./data'
+
+    folders = os.listdir(data_path)
+    for folder in folders:
+        if "pointclouds" not in folder:
+            shutil.rmtree(os.path.join(data_path, folder))
+            os.mkdir(os.path.join(data_path, folder))
+
+    pcds = files.load_pcds(os.path.join(data_path, 'pointclouds'), imme_remove=False)
+    proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
+    for name, pcd in pcds.items():
+        img_rgb, depth = convert_img(pcd, padding=0.0)
+        img_bgr = img_rgb[..., ::-1]
+        cv2.imwrite(os.path.join(data_path, 'images', name + '.jpg'), img_bgr * 255)
+        mask = get_parts(os.path.join(data_path, 'images', name + '.jpg'), name)
+
+        proc_result['images'][name] = img_rgb
+        proc_result['masks'][name] = mask
+        proc_result['pcds'][name] = pcd
+        proc_result['depth'][name] = depth
+
+        if 'front' not in name:
+            os.remove(os.path.join(data_path, 'images', name + '.jpg'))
+    # pose estimation
+    abs_path = os.path.dirname(os.path.abspath(__file__))
+    subprocess.call([os.path.join(abs_path, 'script', "pose_estimation.bat")], shell=True)
+    while len(os.listdir(os.path.join(data_path, 'keypoints'))) == 0:
+        time.sleep(0.1)
+    file_list = os.listdir(os.path.join(data_path, 'keypoints'))
+    for file in file_list:
+        new_name = file.replace('000000000000_', '')
+        os.rename(os.path.join(data_path, 'keypoints', file),
+                  os.path.join(data_path, 'keypoints', new_name))
+
+    # make mesh file
+    subprocess.call([os.path.join(abs_path, 'script', "mesh_maker.bat")], shell=True)
+    # os.system(os.path.join(self.script_path, "mesh_maker.bat"))
+    mesh_path = os.path.join(data_path, 'meshes', 'meshes', 'front')
+    while os.path.isdir(mesh_path) is False or os.path.isfile(os.path.join(mesh_path, '000.obj')) is False:
+        time.sleep(1.0)
+
+    # read mesh file
+    mesh_file = files.load_mesh(mesh_path, '000.obj')
+    # mesh_file.paint_uniform_color(face_color * 2)
+    mesh_file.paint_uniform_color([222.0 / 255.0, 171.0 / 255.0, 127.0 / 255.0])
+    #write_tri_mesh(mesh_file, filename='Meshed.ply', path=os.path.join(data_path))
+    return mesh_file, proc_result
+
+
+# endregion
+
+# region non-validated
+def create_bounding_box(obb):
+    lines = [[0, 1], [1, 2], [2, 3], [0, 3],
+             [4, 5], [5, 6], [6, 7], [4, 7],
+             [0, 4], [1, 5], [2, 6], [3, 7]]
+
+    # Use the same color for all lines
+    colors = [[1, 0, 0] for _ in range(len(lines))]
+    eight_points = np.asarray(obb.get_box_points())
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(eight_points)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
+    return line_set
+
+def crop_n_attach():
+    mesh_file, proc_result = pre_mesh_seq()
+    head = proc_result['pcds']['face']
+
+    # 기존 길이 알아내기
+    mask = proc_result['masks']['front'][:, :, 1]
+    height_x, _ = np.where(mask != 0)
+    origin_height = ((height_x.max() - height_x.min()) / 500.0) + 0.032
+
+    # 기존 길이에 맞춰 스케일링 및 정리정돈
+    min_bound = mesh_file.get_min_bound()
+    max_bound = mesh_file.get_max_bound()
+    gap = max_bound - min_bound
+    scale_ratio = origin_height / gap[1]
+    mesh_file.scale(scale_ratio, center=mesh_file.get_center())
+    mesh_file = mesh_file.transform(np.identity(4))
+    mesh_file.compute_vertex_normals()
+
+    r = head.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2.0, 0))
+    head = head.rotate(r)
+
+    # 위치 0, 0, 0으로 맞춤
+    head_min_bound = head.get_min_bound()
+    mesh_file = mesh_file.translate((-1 * min_bound[0], -1 * min_bound[1], -1 * min_bound[2]))
+    head = head.translate((-1 * head_min_bound[0], -1 * head_min_bound[1], -1 * head_min_bound[2]))
+    head_min_bound = head.get_min_bound()
+    head_max_bound = head.get_max_bound()
+
+    # 머리를 아주 이쁘게 자를 수 있도록 바운드 박스 구성
+    # 얼굴 컬러: 64(Green)
+    target_color = 64
+    face_row, face_col = np.where(mask == target_color)
+    face_len = ((max(face_col) - min(face_col)) / 500.0) + 0.048
+    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(head_min_bound[0], head_max_bound[1] - face_len, head_min_bound[2]),
+                                                    max_bound=head_max_bound)
+    cut_head = head.crop(head_bbox)
+    cut_min_bound = cut_head.get_min_bound()
+    cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
+    hbb = cut_head.get_axis_aligned_bounding_box()
+    bbb = mesh_file.get_oriented_bounding_box()
+
+    # atan 구하기 세우기
+    points = np.asarray(bbb.get_box_points())
+    origin = points[2]
+    source = points[7]
+    y_dist = source[1] - origin[1]
+    z_dist = source[2] - origin[2]
+    x_rot = np.arctan(z_dist/y_dist)
+    r = cut_head.get_rotation_matrix_from_xyz((-1 * x_rot, 0, 0))
+    mesh_file = mesh_file.rotate(r)
+    min_bound = mesh_file.get_min_bound()
+    mesh_file = mesh_file.translate((-1 * min_bound[0], -1 * min_bound[1], -1 * min_bound[2]))
+    max_bound = mesh_file.get_max_bound()
+
+    # 머리 자르기
+    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, max_bound[1] - face_len, 0),
+                                                    max_bound=max_bound)
+    body_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, 0, 0),
+                                                    max_bound=(max_bound[0], max_bound[1] - face_len, max_bound[2]))
+
+    dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
+    body = copy.deepcopy(mesh_file).crop(body_bbox)
+    dhbb = dummy_head.get_axis_aligned_bounding_box()
+    dummy_gap = dhbb.get_max_bound() - dhbb.get_min_bound()
+    hbb = cut_head.get_axis_aligned_bounding_box()
+    head_gap = hbb.get_max_bound() - hbb.get_min_bound()
+    gap = dummy_gap - head_gap
+    head_pos = dhbb.get_min_bound()
+    cut_head = cut_head.translate((head_pos[0], head_pos[1] - 0.016, head_pos[2] + gap[2]))
+
+    # mesh 만들기
+    #body_pcd = body.sample_points_poisson_disk(len(body.triangles))
+    #target_pcd = combine_pcds([body_pcd, cut_head])
+    # target_mesh = gen_tri_mesh(target_pcd)
+    # mesh_taubin = target_mesh.filter_smooth_taubin(number_of_iterations=50)
+    # mesh_taubin.compute_vertex_normals()
+    head_mesh = gen_tri_mesh(cut_head)
+    mesh_taubin = head_mesh.filter_smooth_taubin(number_of_iterations=50)
+    mesh_taubin.compute_vertex_normals()
+    mesh_taubin += body
+    o3d.visualization.draw_geometries([mesh_taubin])
+
+# endregion
+
+
 def main():
-    get_openpose()
+    crop_n_attach()
+
+    # get_openpose()
 
     # dev_root = r'./data'
     # #change_filename(dev_root)
@@ -241,4 +434,5 @@ def main():
 
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     main()

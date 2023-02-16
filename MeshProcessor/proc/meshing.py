@@ -16,12 +16,13 @@ def combine_pcds(pcds, down_sampling=False):
 def gen_tri_mesh(pcd):
     distances = pcd.compute_nearest_neighbor_distance()
     avg_dist = np.mean(distances)
-    radius = 3 * avg_dist
+    radius = 2 * avg_dist
 
-    bpa_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd,
-                                                                               o3d.utility.DoubleVector(
-                                                                                   [radius, radius * 2]))
-    return bpa_mesh
+    # poisson_mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd=pcd, scale=1.0)
+    # mesh = poisson_mesh.subdivide_loop(number_of_iterations=2)
+    mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd,
+                                                                               o3d.utility.DoubleVector([radius, radius * 3]))
+    return mesh
 
 
 def taubin_filter(mesh, itr=100):

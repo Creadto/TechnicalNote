@@ -10,7 +10,7 @@ def get_yaml(path):
 
 
 def get_position(ply_path):
-    return np.ones((4, 4))
+    return np.identity(4)
     # ply_file = open(ply_path, 'r')
     # while True:
     #     line = ply_file.readline()
@@ -75,26 +75,9 @@ def convert_http_ply(path, new_filename):
     ply_file.close()
 
 
-def load_ply(root, filename, cam_loc, **kwargs):
+def load_ply(root, filename, **kwargs):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
-    if cam_loc is not None:
-        if isinstance(cam_loc, dict):
-            for key in cam_loc.keys():
-                if key in filename:
-                    transform = cam_loc[key]
-                    location = transform[-1][0:3]
-                    pcd.orient_normals_towards_camera_location(np.array(location))
-                    break
-        else:
-            transform = cam_loc
-            location = transform[-1][0:3]
-            pcd.orient_normals_towards_camera_location(location)
-        if "to_cam" in kwargs:
-            pcd.transform(kwargs['to_cam'].T)
-        else:
-            pcd.transform(np.identity(4))
-
     return pcd
 
 
@@ -120,11 +103,19 @@ def load_pcds(path, cam_loc=None, imme_remove=False):
     file_list = os.listdir(path)
     file_list = [file for file in file_list if '.ply' in file]
     for ply in file_list:
-        filename = get_filename(os.path.join(path, ply))
+        filename = ply.replace('.ply', '').lower()
         if cam_loc is None:
             cam_loc = get_position(ply_path=os.path.join(path, ply))
-        pcd = load_ply(root=path, filename=ply, cam_loc=cam_loc)
-        pcds[filename.lower()] = pcd
+        pcd = load_ply(root=path, filename=ply)
+        if 'face' not in filename:
+            transform = cam_loc
+            location = transform[-1][0:3]
+            pcd.orient_normals_towards_camera_location(location)
+        else:
+            r = pcd.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2.0, 0))
+            pcd = pcd.rotate(r)
+
+        pcds[filename] = pcd
         if imme_remove:
             os.remove(os.path.join(path, ply))
     return pcds
@@ -239,7 +230,7 @@ def main_cut(path):
     f.close()
     new_f.close()
 
-    new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'), cam_loc=None)
+    new_pcd, _ = load_ply(root='', filename=path.replace('.ply', '_trim.ply'), cam_loc=None)
     return new_pcd
 
 
