@@ -7,7 +7,7 @@ import open3d as o3d
 #@jit(nopython=True)
 # 현재 numpy version을 낮춰야 jit를 쓸듯
 def draw_image(backboard, points, colors):
-    for idx in  range(len(points)):
+    for idx in range(len(points)):
         y = points[idx, 1]
         z = backboard.shape[1] - points[idx, 2]
         y_min = int(y-2)

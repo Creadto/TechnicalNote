@@ -20,6 +20,7 @@ import util.files as files
 from util.yaml_config import YamlConfig
 import json
 
+from testbed import crop_n_attach
 
 def dumper(obj):
     try:
@@ -181,9 +182,12 @@ class HttpProvider:
                 face_mask = [110, 64, 170]
                 mask = mask[:, :, 1]
                 height_x, height_y = np.where(mask != 0)
-                total_height = ((height_x.max() - height_x.min()) / 500.0)
-                total_height = round((total_height * 100.0) + 3.2, 2)
+                # height_x, height_y = mask.shape
                 part_x, part_y = np.where(mask == face_mask[1])
+                #total_height = ((height_x - part_x.min()) / 500.0)
+                total_height = ((height_x.max() - part_x.min()) / 500.0)
+                total_height = round((total_height * 100.0) + 3.2, 2)
+
                 face_color = img_rgb[((part_x.max() - part_x.min()) // 4) + part_x.min(),
                              ((part_y.max() - part_y.min()) // 2) + part_y.min(), :]
 
@@ -234,9 +238,9 @@ class HttpProvider:
         mesh_file = load_mesh(mesh_path, '000.obj')
         #mesh_file.paint_uniform_color(face_color * 2)
         mesh_file.paint_uniform_color([222.0 / 255.0, 171.0 / 255.0, 127.0 / 255.0])
-        write_tri_mesh(mesh_file, filename='Meshed.ply', path=os.path.join(self.server_path))
+        mesh_taubin = crop_n_attach(mesh_file, proc_result)
+        write_tri_mesh(mesh_taubin, filename='Meshed.ply', path=os.path.join(self.server_path))
         os.remove(os.path.join(self.server_path, 'Meshing.tat'))
-
     def binder(self):
         self.server = HttpServer(ip=self.ip, port=self.port, listener=self.listener, handler=RequestHandler)
 

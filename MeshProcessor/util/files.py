@@ -33,6 +33,8 @@ def get_filename(ply_path):
             value_string = line[:-1]
             value_string = value_string.replace('comment direction ', '')
             return value_string
+        elif "Surface" in line:
+            return "Face"
 
 
 def change_filename(root):
@@ -73,7 +75,6 @@ def convert_http_ply(path, new_filename):
             new_file.write(line)
     new_file.close()
     ply_file.close()
-
 
 def load_ply(root, filename, **kwargs):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))

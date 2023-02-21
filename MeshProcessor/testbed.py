@@ -1,11 +1,12 @@
 import os
 import copy
+import time
+
 import numpy as np
 from util.files import load_pcds, get_position, load_ply, make_ply_header, write_tri_mesh
 from proc.meshing import gen_tri_mesh, combine_pcds
 import open3d as o3d
 import cv2
-import torch
 from util.yaml_config import YamlConfig
 
 
@@ -298,7 +299,7 @@ def pre_mesh_seq():
     mesh_file = files.load_mesh(mesh_path, '000.obj')
     # mesh_file.paint_uniform_color(face_color * 2)
     mesh_file.paint_uniform_color([222.0 / 255.0, 171.0 / 255.0, 127.0 / 255.0])
-    #write_tri_mesh(mesh_file, filename='Meshed.ply', path=os.path.join(data_path))
+    # write_tri_mesh(mesh_file, filename='Meshed.ply', path=os.path.join(data_path))
     return mesh_file, proc_result
 
 
@@ -320,8 +321,10 @@ def create_bounding_box(obb):
 
     return line_set
 
-def crop_n_attach():
-    mesh_file, proc_result = pre_mesh_seq()
+
+def crop_n_attach(mesh_file=None, proc_result=None):
+    if mesh_file is None:
+        mesh_file, proc_result = pre_mesh_seq()
     head = proc_result['pcds']['face']
 
     # 기존 길이 알아내기
@@ -337,6 +340,10 @@ def crop_n_attach():
     mesh_file.scale(scale_ratio, center=mesh_file.get_center())
     mesh_file = mesh_file.transform(np.identity(4))
     mesh_file.compute_vertex_normals()
+    min_bound = mesh_file.get_min_bound()
+    max_bound = mesh_file.get_max_bound()
+
+    mask = proc_result['masks']['back'][:, :, 1]
 
     r = head.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2.0, 0))
     head = head.rotate(r)
@@ -352,9 +359,10 @@ def crop_n_attach():
     # 얼굴 컬러: 64(Green)
     target_color = 64
     face_row, face_col = np.where(mask == target_color)
-    face_len = ((max(face_col) - min(face_col)) / 500.0) + 0.048
-    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(head_min_bound[0], head_max_bound[1] - face_len, head_min_bound[2]),
-                                                    max_bound=head_max_bound)
+    face_len = ((max(face_row) - min(face_row)) / 500.0) + 0.048 + 0.16
+    head_bbox = o3d.geometry.AxisAlignedBoundingBox(
+        min_bound=(head_min_bound[0], head_max_bound[1] - face_len, head_min_bound[2]),
+        max_bound=head_max_bound)
     cut_head = head.crop(head_bbox)
     cut_min_bound = cut_head.get_min_bound()
     cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
@@ -367,7 +375,7 @@ def crop_n_attach():
     source = points[7]
     y_dist = source[1] - origin[1]
     z_dist = source[2] - origin[2]
-    x_rot = np.arctan(z_dist/y_dist)
+    x_rot = np.arctan(z_dist / y_dist)
     r = cut_head.get_rotation_matrix_from_xyz((-1 * x_rot, 0, 0))
     mesh_file = mesh_file.rotate(r)
     min_bound = mesh_file.get_min_bound()
@@ -375,64 +383,81 @@ def crop_n_attach():
     max_bound = mesh_file.get_max_bound()
 
     # 머리 자르기
-    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, max_bound[1] - face_len, 0),
-                                                    max_bound=max_bound)
-    body_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, 0, 0),
-                                                    max_bound=(max_bound[0], max_bound[1] - face_len, max_bound[2]))
-
+    mask = proc_result['masks']['front'][:, :, 1]
+    torso_color = 240
+    _, torso_width = np.where(mask == torso_color)
+    height, _ = mask.shape
+    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500 / 2.0),
+                    (height - face_row.max()) / 500.0, 0)
+    cut_smpl_max = ((face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
+                    (height - face_row.min()) / 500.0, max_bound[2])
+    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
+                                                    max_bound=cut_smpl_max)
+    head_bbox.color = [1, 0, 0]
     dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
-    body = copy.deepcopy(mesh_file).crop(body_bbox)
+
+    dummy_max_bound = dummy_head.get_max_bound()
+    height_gap = (height - face_row.min()) / 500.0 - dummy_max_bound[1]
+    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500 / 2.0),
+                    ((height - face_row.max()) / 500.0) - height_gap, 0)
+    cut_smpl_max = ((face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
+                    ((height - face_row.min()) / 500.0) - height_gap, max_bound[2])
+    head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
+                                                    max_bound=cut_smpl_max)
+    dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
+
+    head_gap = dummy_head.get_max_bound() - dummy_head.get_min_bound()
+    if head_gap[1] > 0.05:
+        cut_head_max_bound = cut_head.get_max_bound()
+        head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, cut_head_max_bound[1] - head_gap[1], 0),
+                                                        max_bound=(cut_head_max_bound[0], cut_head_max_bound[1], cut_head_max_bound[2]))
+        cut_head = cut_head.crop(head_bbox)
+    cut_min_bound = cut_head.get_min_bound()
+    cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
+    #body = copy.deepcopy(mesh_file).crop(body_bbox)
     dhbb = dummy_head.get_axis_aligned_bounding_box()
     dummy_gap = dhbb.get_max_bound() - dhbb.get_min_bound()
     hbb = cut_head.get_axis_aligned_bounding_box()
     head_gap = hbb.get_max_bound() - hbb.get_min_bound()
     gap = dummy_gap - head_gap
     head_pos = dhbb.get_min_bound()
-    cut_head = cut_head.translate((head_pos[0], head_pos[1] - 0.016, head_pos[2] + gap[2]))
+    cut_head = cut_head.translate((head_pos[0], head_pos[1], head_pos[2] + gap[2]))
 
     # mesh 만들기
-    #body_pcd = body.sample_points_poisson_disk(len(body.triangles))
-    #target_pcd = combine_pcds([body_pcd, cut_head])
+    # body_pcd = body.sample_points_poisson_disk(len(body.triangles))
+    # target_pcd = combine_pcds([body_pcd, cut_head])
     # target_mesh = gen_tri_mesh(target_pcd)
     # mesh_taubin = target_mesh.filter_smooth_taubin(number_of_iterations=50)
     # mesh_taubin.compute_vertex_normals()
     head_mesh = gen_tri_mesh(cut_head)
     mesh_taubin = head_mesh.filter_smooth_taubin(number_of_iterations=50)
     mesh_taubin.compute_vertex_normals()
-    mesh_taubin += body
-    o3d.visualization.draw_geometries([mesh_taubin])
+    mesh_taubin += mesh_file
+    center_bound = (mesh_taubin.get_max_bound() - mesh_taubin.get_min_bound()) / 2.0
+    mesh_taubin.translate((-1 * center_bound[0], (-1 * center_bound[1]) + 0.2, -1 * center_bound[2]))
+
+    #
+    # write_tri_mesh(mesh_taubin, 'temp.ply')
+    # import pymeshlab
+    # ms = pymeshlab.MeshSet()
+    # ms.load_new_mesh('./temp.ply')
+    # ms.save_current_mesh('./testbed.obj')
+    # o3d.visualization.draw_geometries([mesh_taubin])
+    return mesh_taubin
 
 # endregion
 
 
 def main():
+    points = 3773033 + 70700 + 2590271 + 3133489 + 3487231
+
+    print(points)
+    begin = time.time()
     crop_n_attach()
-
-    # get_openpose()
-
-    # dev_root = r'./data'
-    # #change_filename(dev_root)
-    # #transform_test(root=dev_root)
-    # proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
-    # pcds = load_pcds(dev_root)
-    # # mesh = gen_tri_mesh(pcds['front'])
-    # # write_tri_mesh(mesh, filename='test.ply')
-    # for name, pcd in pcds.items():
-    #     # pcd = get_largest_cluster(pcd)
-    #     img_rgb, depth = convert_img(pcd)
-    #     img_bgr = img_rgb[..., ::-1]
-    #     cv2.imwrite(os.path.join('./images', name + '.jpg'), img_bgr * 255)
-    #     mask = get_parts(os.path.join('./images', name + '.jpg'), name)
-    #
-    #     proc_result['images'][name] = img_rgb
-    #     proc_result['masks'][name] = mask
-    #     proc_result['pcds'][name] = pcd
-    #     proc_result['depth'][name] = depth
-    # proc_result['res'] = 500
-    # proc_result['template'] = None
-    # measure_bodies(**proc_result)
-
+    end = time.time()
+    print(f"{end - begin:.5f} sec")
 
 if __name__ == '__main__':
+    import torch
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     main()
