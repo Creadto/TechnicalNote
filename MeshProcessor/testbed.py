@@ -215,6 +215,22 @@ def classify_gender():
 # endregion
 
 # region non-module
+def create_bounding_box(obb):
+    lines = [[0, 1], [1, 2], [2, 3], [0, 3],
+             [4, 5], [5, 6], [6, 7], [4, 7],
+             [0, 4], [1, 5], [2, 6], [3, 7]]
+
+    # Use the same color for all lines
+    colors = [[1, 0, 0] for _ in range(len(lines))]
+    eight_points = np.asarray(obb.get_box_points())
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(eight_points)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+
+    return line_set
+
+
 def mesh_test(root):
     pcds = load_pcds(path=root)
     for name, pcd in pcds.items():
@@ -306,22 +322,6 @@ def pre_mesh_seq():
 # endregion
 
 # region non-validated
-def create_bounding_box(obb):
-    lines = [[0, 1], [1, 2], [2, 3], [0, 3],
-             [4, 5], [5, 6], [6, 7], [4, 7],
-             [0, 4], [1, 5], [2, 6], [3, 7]]
-
-    # Use the same color for all lines
-    colors = [[1, 0, 0] for _ in range(len(lines))]
-    eight_points = np.asarray(obb.get_box_points())
-    line_set = o3d.geometry.LineSet()
-    line_set.points = o3d.utility.Vector3dVector(eight_points)
-    line_set.lines = o3d.utility.Vector2iVector(lines)
-    line_set.colors = o3d.utility.Vector3dVector(colors)
-
-    return line_set
-
-
 def crop_n_attach(mesh_file=None, proc_result=None):
     if mesh_file is None:
         mesh_file, proc_result = pre_mesh_seq()
@@ -371,11 +371,9 @@ def crop_n_attach(mesh_file=None, proc_result=None):
 
     # atan 구하기 세우기
     points = np.asarray(bbb.get_box_points())
-    origin = points[2]
-    source = points[7]
-    y_dist = source[1] - origin[1]
-    z_dist = source[2] - origin[2]
-    x_rot = np.arctan(z_dist / y_dist)
+
+    from proc.calculating import get_theta_from
+    x_rot = get_theta_from(points[2], points[7])
     r = cut_head.get_rotation_matrix_from_xyz((-1 * x_rot, 0, 0))
     mesh_file = mesh_file.rotate(r)
     min_bound = mesh_file.get_min_bound()

@@ -17,6 +17,66 @@ def check_float(element):
         return False
 
 
+def get_theta_from(a, b):
+    y_dist = b[1] - a[1]
+    z_dist = b[2] - a[2]
+    return np.arctan(z_dist / y_dist)
+
+def get_parabola_length(length, height):
+    np.log()
+
+def measure_bodies2(**kwargs):
+    if kwargs['template'] is None:
+        template = YamlConfig.get_dict(r'config/Measurement.yaml')
+        template = template['measurement']
+
+    images = copy.deepcopy(kwargs['images'])
+    pcds = copy.deepcopy(kwargs['pcds'])
+    masks = copy.deepcopy(kwargs['masks'])
+    depth = copy.deepcopy(kwargs['depth'])
+    smplx_head = copy.deepcopy(kwargs['smplx_head'])
+    resolution = kwargs['res']
+    check_points = template['check_points']
+    measure_info = template[template['target']]
+
+    output = copy.deepcopy(measure_info)
+    for key, _ in output.items():
+        output[key] = 0.0
+
+    for code, value in check_points.items():
+        direction = value['direction']
+        resources = value['resources']
+        method = value['method']
+        m_range = value['range']
+        pivot = value['pivot']
+
+        if "smplx" in direction:
+            output[code] = 0.0
+        else:
+            # load data
+            for m_dir in direction.split("|"):
+                mask = masks[m_dir][:, :, 1]
+                for m_resource in resources:
+                    # 해당 Part의 정보 가져오기
+                    surface_height = np.array([], dtype=np.int64)
+                    surface_width = np.array([], dtype=np.int64)
+
+                    for color, part_label in zip(template['custom_colors'], template['part_labels']):
+                        if m_resource not in part_label.lower():
+                            continue
+                        part_x, part_y = np.where(mask == color[1])
+                        surface_height = np.concatenate([surface_height, part_x])
+                        surface_width = np.concatenate([surface_width, part_y])
+
+                # 알고리즘 정의
+                if "outline" in method:
+                    m_depth = depth[m_dir]
+                if "w" in method:
+                    t = 1
+                else:
+                    t = 2
+            surface_height = np.concatenate([surface_height, part_x])
+            surface_width = np.concatenate([surface_width, part_y])
 def measure_bodies(**kwargs):
     if kwargs['template'] is None:
         template = YamlConfig.get_dict(r'config/Measurement.yaml')
