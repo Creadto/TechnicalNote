@@ -22,8 +22,22 @@ def get_theta_from(a, b):
     z_dist = b[2] - a[2]
     return np.arctan(z_dist / y_dist)
 
-def get_parabola_length(length, height):
-    np.log()
+
+def get_parabola_length(**kwargs):
+    a = kwargs['height']
+    b = kwargs['length']
+    sqrt_term = np.sqrt((b ** 2) + (16 * (a ** 2)))
+    front_term = 1 / 2 * sqrt_term
+    mid_term = (b ** 2) / (8 * a)
+    back_term = np.log((4 * a + sqrt_term) / b)
+    return mid_term * back_term + front_term
+
+
+def get_straight_length(**kwargs):
+    temp_array = a - b
+    euc = np.linalg.norm(temp_array)
+    return euc
+
 
 def measure_bodies2(**kwargs):
     if kwargs['template'] is None:
@@ -40,16 +54,13 @@ def measure_bodies2(**kwargs):
     measure_info = template[template['target']]
 
     output = copy.deepcopy(measure_info)
-    for key, _ in output.items():
-        output[key] = 0.0
-
     for code, value in check_points.items():
         direction = value['direction']
         resources = value['resources']
         method = value['method']
         m_range = value['range']
         pivot = value['pivot']
-
+        length = 0
         if "smplx" in direction:
             output[code] = 0.0
         else:
@@ -71,12 +82,30 @@ def measure_bodies2(**kwargs):
                 # 알고리즘 정의
                 if "outline" in method:
                     m_depth = depth[m_dir]
-                if "w" in method:
-                    t = 1
+                    m_method = get_parabola_length
                 else:
-                    t = 2
-            surface_height = np.concatenate([surface_height, part_x])
-            surface_width = np.concatenate([surface_width, part_y])
+                    m_method = get_straight_length
+
+                # 범위 추출
+                if "w" in method:
+                    target = surface_width
+                    opposite = surface_height
+                else:
+                    target = surface_height
+                    opposite = surface_width
+                line = int(opposite.shape[0] * pivot)
+                pos = opposite[line] # 반대편을 통해 값을 쭉 빼올 수 있다
+                target # 얘로 길이를 잴거다
+                # 그러니 가운데 뎁스를 알 수 있다
+                # 이미지로 해야 위치잡기가 쉽다
+                #
+                m_length = 0
+                if "2x" in method:
+                    m_length = m_length * 2
+                length += m_length
+        output[code] = length
+    return output
+
 def measure_bodies(**kwargs):
     if kwargs['template'] is None:
         template = YamlConfig.get_dict(r'config/Measurement.yaml')
@@ -155,6 +184,3 @@ def measure_bodies(**kwargs):
     output["X_Measure_1000"] = copy.deepcopy(kwargs['total_height'])
     YamlConfig.write_yaml('./Measure.yaml', output)
     return output
-
-
-

@@ -267,6 +267,7 @@ def pre_mesh_seq():
     import util.files as files
     from proc.preprocessing import convert_img
     from proc.clustering import get_parts
+    from proc.calculating import measure_bodies2
     import shutil
     import time
 
@@ -293,6 +294,13 @@ def pre_mesh_seq():
 
         if 'front' not in name:
             os.remove(os.path.join(data_path, 'images', name + '.jpg'))
+
+    # measurement
+    proc_result['res'] = 500
+    proc_result['template'] = None
+    proc_result['total_height'] = 1.77
+    output = measure_bodies2(**proc_result)
+
     # pose estimation
     abs_path = os.path.dirname(os.path.abspath(__file__))
     subprocess.call([os.path.join(abs_path, 'script', "pose_estimation.bat")], shell=True)
