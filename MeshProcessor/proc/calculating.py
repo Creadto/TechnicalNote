@@ -24,19 +24,64 @@ def get_theta_from(a, b):
 
 
 def get_parabola_length(**kwargs):
-    a = kwargs['height']
-    b = kwargs['length']
+    # m_length = m_method(measure=target, opposite=opposite, image=images[m_dir],
+    #                     range=m_range, pivot=pivot, depth=m_depth)
+    if kwargs['pivot'] < 0:
+        return 0.0
+
+    # 여기는 두 개의 resource를 반영하면 안되는 제약 조건이 존재
+    # 이게 픽셀 위치
+    gap = kwargs['range'][1] - kwargs['range'][0]
+    center = int((kwargs['measure'].max() - kwargs['measure'].min()) / 2)
+    center_point = center + kwargs['measure'].min()
+    right_point = center + int(center * gap) + kwargs['measure'].min()
+    left_point = center + -1 * int(center * gap) + kwargs['measure'].min()
+
+    # 세 점의 인덱스(x, y 쌍을 구하기 위함)
+    center_index = np.where(kwargs['measure'] == center_point)[0]
+    left_index = np.where(kwargs['measure'] == left_point)[0]
+    right_index = np.where(kwargs['measure'] == right_point)[0]
+
+    # 세 점의 라인
+    width = right_point - left_point
+
+    if 0.0 < kwargs['pivot'] < 1.0:
+        line = int((kwargs['opposite'].max() - kwargs['opposite'].min()) * kwargs['pivot'] + kwargs['opposite'].min())
+        pos = kwargs['opposite'][line]
+        
+        # Depth가 없으면 Center쪽으로 좀 더 다가가는 코드가 필요
+        # Depth가 애초에 잘못 저장되어 있었음
+        height = kwargs['depth'][center_point, pos] - abs((kwargs['depth'][left_point, pos] + kwargs['depth'][right_point, pos]) / 2.0)
+    else:
+        center_line = kwargs['opposite'][center_index]
+        left_line = kwargs['opposite'][left_index]
+        right_line = kwargs['opposite'][right_index]
+        if kwargs['pivot'] == 0.0:
+            height = center_line.max() - abs((left_line.max() - right_line.max()) / 2.0)
+        else:
+            height = center_line.min() - abs((left_line.min() - right_line.min()) / 2.0)
+
+    a = height
+    b = width
     sqrt_term = np.sqrt((b ** 2) + (16 * (a ** 2)))
     front_term = 1 / 2 * sqrt_term
     mid_term = (b ** 2) / (8 * a)
     back_term = np.log((4 * a + sqrt_term) / b)
     return mid_term * back_term + front_term
 
-
 def get_straight_length(**kwargs):
-    temp_array = a - b
-    euc = np.linalg.norm(temp_array)
-    return euc
+    if kwargs['pivot'] < 0:
+        length = (kwargs['measure'].max() - kwargs['measure'].min()) * (kwargs['range'][1] - kwargs['range'][0])
+    else:
+        line = int((kwargs['opposite'].max() - kwargs['opposite'].min()) * kwargs['pivot'] + kwargs['opposite'].min())
+        pos = kwargs['opposite'][line]
+        uq_measure = np.unique(kwargs['measure'])
+        image_line = kwargs['image'][uq_measure, pos]
+        denoise_line = np.where(image_line != 0)[0]
+        filter_line = uq_measure[denoise_line]
+        length = (filter_line.max() - filter_line.min()) * (kwargs['range'][1] - kwargs['range'][0])
+
+    return length
 
 
 def measure_bodies2(**kwargs):
@@ -48,15 +93,14 @@ def measure_bodies2(**kwargs):
     pcds = copy.deepcopy(kwargs['pcds'])
     masks = copy.deepcopy(kwargs['masks'])
     depth = copy.deepcopy(kwargs['depth'])
-    smplx_head = copy.deepcopy(kwargs['smplx_head'])
+    # smplx_head = copy.deepcopy(kwargs['smplx_head'])
     resolution = kwargs['res']
-    check_points = template['check_points']
     measure_info = template[template['target']]
 
     output = copy.deepcopy(measure_info)
-    for code, value in check_points.items():
+    for code, value in measure_info.items():
         direction = value['direction']
-        resources = value['resources']
+        resources = value['resource']
         method = value['method']
         m_range = value['range']
         pivot = value['pivot']
@@ -67,11 +111,10 @@ def measure_bodies2(**kwargs):
             # load data
             for m_dir in direction.split("|"):
                 mask = masks[m_dir][:, :, 1]
+                # 해당 Part의 정보 가져오기
+                surface_height = np.array([], dtype=np.int64)
+                surface_width = np.array([], dtype=np.int64)
                 for m_resource in resources:
-                    # 해당 Part의 정보 가져오기
-                    surface_height = np.array([], dtype=np.int64)
-                    surface_width = np.array([], dtype=np.int64)
-
                     for color, part_label in zip(template['custom_colors'], template['part_labels']):
                         if m_resource not in part_label.lower():
                             continue
@@ -84,27 +127,32 @@ def measure_bodies2(**kwargs):
                     m_depth = depth[m_dir]
                     m_method = get_parabola_length
                 else:
+                    m_depth = None
                     m_method = get_straight_length
 
                 # 범위 추출
+                image = images[m_dir][:, :, 0]
+                image = np.array(image * 255, dtype=np.uint8)
                 if "w" in method:
+                    image = np.rot90(image, 1)
+                    if m_depth is not None:
+                        m_depth = np.rot90(m_depth, 1)
                     target = surface_width
                     opposite = surface_height
                 else:
                     target = surface_height
                     opposite = surface_width
-                line = int(opposite.shape[0] * pivot)
-                pos = opposite[line] # 반대편을 통해 값을 쭉 빼올 수 있다
-                target # 얘로 길이를 잴거다
-                # 그러니 가운데 뎁스를 알 수 있다
-                # 이미지로 해야 위치잡기가 쉽다
-                #
-                m_length = 0
+
+                m_length = m_method(measure=target, opposite=opposite, image=image,
+                                    range=m_range, pivot=pivot, depth=m_depth)
                 if "2x" in method:
                     m_length = m_length * 2
                 length += m_length
-        output[code] = length
+        # iamge offset 때문에 2.4cm(0.024) 더 해야함
+        meter = length / resolution + 0.024
+        output[code] = copy.deepcopy(round(meter * 100, 2))
     return output
+
 
 def measure_bodies(**kwargs):
     if kwargs['template'] is None:

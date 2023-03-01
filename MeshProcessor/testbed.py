@@ -1,13 +1,13 @@
 import os
+import cv2
 import copy
 import time
-
+import torch
 import numpy as np
-from util.files import load_pcds, get_position, load_ply, make_ply_header, write_tri_mesh
-from proc.meshing import gen_tri_mesh, combine_pcds
 import open3d as o3d
-import cv2
 from util.yaml_config import YamlConfig
+from proc.meshing import gen_tri_mesh, combine_pcds
+from util.files import load_pcds, get_position, load_ply, make_ply_header, write_tri_mesh
 
 
 # region deprecated
@@ -271,7 +271,7 @@ def pre_mesh_seq():
     import shutil
     import time
 
-    data_path = r'./data'
+    data_path = GlobalConfig['path']['data_path']
 
     folders = os.listdir(data_path)
     for folder in folders:
@@ -330,9 +330,7 @@ def pre_mesh_seq():
 # endregion
 
 # region non-validated
-def crop_n_attach(mesh_file=None, proc_result=None):
-    if mesh_file is None:
-        mesh_file, proc_result = pre_mesh_seq()
+def crop_n_attach(mesh_file, proc_result):
     head = proc_result['pcds']['face']
 
     # 기존 길이 알아내기
@@ -393,10 +391,12 @@ def crop_n_attach(mesh_file=None, proc_result=None):
     torso_color = 240
     _, torso_width = np.where(mask == torso_color)
     height, _ = mask.shape
-    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500 / 2.0),
+    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + (
+                (torso_width.mean() - torso_width.min()) / 500 / 2.0),
                     (height - face_row.max()) / 500.0, 0)
-    cut_smpl_max = ((face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
-                    (height - face_row.min()) / 500.0, max_bound[2])
+    cut_smpl_max = (
+    (face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
+    (height - face_row.min()) / 500.0, max_bound[2])
     head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
                                                     max_bound=cut_smpl_max)
     head_bbox.color = [1, 0, 0]
@@ -404,10 +404,12 @@ def crop_n_attach(mesh_file=None, proc_result=None):
 
     dummy_max_bound = dummy_head.get_max_bound()
     height_gap = (height - face_row.min()) / 500.0 - dummy_max_bound[1]
-    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500 / 2.0),
+    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + (
+                (torso_width.mean() - torso_width.min()) / 500 / 2.0),
                     ((height - face_row.max()) / 500.0) - height_gap, 0)
-    cut_smpl_max = ((face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
-                    ((height - face_row.min()) / 500.0) - height_gap, max_bound[2])
+    cut_smpl_max = (
+    (face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
+    ((height - face_row.min()) / 500.0) - height_gap, max_bound[2])
     head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
                                                     max_bound=cut_smpl_max)
     dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
@@ -416,11 +418,12 @@ def crop_n_attach(mesh_file=None, proc_result=None):
     if head_gap[1] > 0.05:
         cut_head_max_bound = cut_head.get_max_bound()
         head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, cut_head_max_bound[1] - head_gap[1], 0),
-                                                        max_bound=(cut_head_max_bound[0], cut_head_max_bound[1], cut_head_max_bound[2]))
+                                                        max_bound=(cut_head_max_bound[0], cut_head_max_bound[1],
+                                                                   cut_head_max_bound[2]))
         cut_head = cut_head.crop(head_bbox)
     cut_min_bound = cut_head.get_min_bound()
     cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
-    #body = copy.deepcopy(mesh_file).crop(body_bbox)
+    # body = copy.deepcopy(mesh_file).crop(body_bbox)
     dhbb = dummy_head.get_axis_aligned_bounding_box()
     dummy_gap = dhbb.get_max_bound() - dhbb.get_min_bound()
     hbb = cut_head.get_axis_aligned_bounding_box()
@@ -451,6 +454,7 @@ def crop_n_attach(mesh_file=None, proc_result=None):
     # o3d.visualization.draw_geometries([mesh_taubin])
     return mesh_taubin
 
+
 # endregion
 
 
@@ -459,11 +463,14 @@ def main():
 
     print(points)
     begin = time.time()
-    crop_n_attach()
+    mesh_file, proc_result = pre_mesh_seq()
+    crop_n_attach(mesh_file, proc_result)
     end = time.time()
     print(f"{end - begin:.5f} sec")
 
+
 if __name__ == '__main__':
-    import torch
+    GlobalConfig = YamlConfig.get_dict(r'config/default.yaml')
+    GlobalConfig = GlobalConfig['default']
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     main()

@@ -25,12 +25,12 @@ def get_segmentation(path, image, color, label):
     # colored mask (separate colour for each body part)
     colored_mask = result.get_colored_part_mask(mask, color, label)
     tf.keras.preprocessing.image.save_img(
-        os.path.join(path, 'colored-mask.jpg'),
+        path + 'colored-mask.jpg',
         colored_mask
     )
     blend = cv2.addWeighted(image_array.copy(), 0.5, colored_mask, 0.5, 0, dtype=cv2.CV_32F)
     tf.keras.preprocessing.image.save_img(
-        os.path.join(path, 'blended-mask.jpg'),
+        path + 'blended-mask.jpg',
         blend
     )
 

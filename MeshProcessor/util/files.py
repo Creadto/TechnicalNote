@@ -76,6 +76,7 @@ def convert_http_ply(path, new_filename):
     new_file.close()
     ply_file.close()
 
+
 def load_ply(root, filename, **kwargs):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))

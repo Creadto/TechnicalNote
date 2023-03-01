@@ -26,197 +26,197 @@ measurement:
         - "feet"
       "method": "height"
       "range": [0.0, 1.0]
-      "pivot": 0.5
+      "pivot": -1.0 # don't care(-1.0)
     "X_Measure_1001": # 앞 얼굴 중심 너비
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "width"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.4
+      "resource":
+        - "torso"
+      "method": "width"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.4
     "X_Measure_1002":  # 목 둘레
-      "direction": "smplx"
-        "resource":
-          - "face"
-        "method": "w-outline"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.1
+      "direction": "front"
+      "resource":
+        - "face"
+      "method": "w-outline"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.9
     "X_Measure_1003":  # 앞 품
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.2
+      "resource":
+        - "torso"
+      "method": "w-outline"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.2
     "X_Measure_1004":  # 가슴 둘레
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.2
+      "resource":
+        - "torso"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.2
     "X_Measure_1005":  # 허리 둘레
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.7
+      "resource":
+        - "torso"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.7
     "X_Measure_1006":  # 힙둘레
       "direction": "front"
-        "resource":
-          - "upperleg"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.1
+      "resource":
+        - "upperleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.1
     "X_Measure_1007":  # 허벅지 둘레
       "direction": "front"
-        "resource":
-          - "leftupperleg"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.6
+      "resource":
+        - "leftupperleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.6
     "X_Measure_1008":  # 허벅지 중간 둘레
       "direction": "front"
-        "resource":
-          - "leftupperleg"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.8
+      "resource":
+        - "leftupperleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.8
     "X_Measure_1009":  # 무릎 둘레
       "direction": "front|back"
-        "resource":
-          - "lowerleg"
-        "method": "w-outline"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.0
+      "resource":
+        - "lowerleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.01
     "X_Measure_1010":  # 종아리 둘레
       "direction": "front|back"
-        "resource":
-          - "lowerleg"
-        "method": "w-outline"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.2
+      "resource":
+        - "lowerleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.2
     "X_Measure_1011":  # 발목 둘레
       "direction": "front"
-        "resource":
-          - "lowerleg"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 1.0
+      "resource":
+        - "leftlowerleg"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 1.0
     "X_Measure_1101":  # 앞 얼굴 중심 길이
-      "direction": "smplx"
-        "resource":
-          - "head"
-        "method": "height"
-        "range": [ 0.0, 0.1 ]
-        "pivot": 0.5
+      "direction": "front"
+      "resource":
+        - "face"
+      "method": "height"
+      "range": [ 0.0, 0.8 ]
+      "pivot": 0.5
     "X_Measure_1102":  # 유장
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "h-outline"
-        "range": [ 0.0, 0.3 ]
-        "pivot": 0.2
+      "resource":
+        - "torso"
+      "method": "h-outline"
+      "range": [ 0.0, 0.3 ]
+      "pivot": 0.2
     "X_Measure_1103":  # 앞 길이
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "height"
-        "range": [ 0.0, 0.8 ]
-        "pivot": 0.2
+      "resource":
+        - "torso"
+      "method": "height"
+      "range": [ 0.0, 0.8 ]
+      "pivot": 0.2
     "X_Measure_1104":  # 앞 중심 길이
       "direction": "front"
-        "resource":
-          - "torso"
-        "method": "height"
-        "range": [ 0.0, 0.8 ]
-        "pivot": 0.5
+      "resource":
+        - "torso"
+      "method": "height"
+      "range": [ 0.0, 0.8 ]
+      "pivot": 0.5
     "X_Measure_2001":  # 겨드랑 너비
       "direction": "left"
-        "resource":
-          - "upperarm"
-        "method": "width"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.1
+      "resource":
+        - "upperarm"
+      "method": "width"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.1
     "X_Measure_2002":  # 암홀 둘레
       "direction": "left"
-        "resource":
-          - "upperarm"
-        "method": "w-outline2x"
-        "range": [ 0.0, 0.5 ]
-        "pivot": 0.0
+      "resource":
+        - "upperarm"
+      "method": "w-outline2x"
+      "range": [ 0.0, 0.5 ]
+      "pivot": 0.0
     "X_Measure_2101":  # 무릎 위치
       "direction": "left"
-        "resource":
-          - "torso"
-          - "upperleg"
-        "method": "height"
-        "range": [ 0.4, 1.0 ]
-        "pivot": 0.5
+      "resource":
+        - "torso"
+        - "upperleg"
+      "method": "height"
+      "range": [ 0.4, 1.0 ]
+      "pivot": 0.5
     "X_Measure_2102":  # 무릎 높이
       "direction": "left"
-        "resource":
-          - "lowerleg"
-        "method": "height"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.5
+      "resource":
+        - "lowerleg"
+      "method": "height"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.5
     "X_Measure_3001":  # 옆 얼굴 중심 너비
-      "direction": "smplx"
-        "resource":
-          - "head"
-        "method": "depth"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.0
+      "direction": "left"
+      "resource":
+        - "face"
+      "method": "width"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.5
     "X_Measure_3002":  # 어깨 너비
       "direction": "back"
-        "resource":
-          - "back"
-        "method": "w-outline"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.0
+      "resource":
+        - "torso"
+      "method": "w-outline"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.0
     "X_Measure_3003":  # 등품
       "direction": "back"
-        "resource":
-          - "torso"
-        "method": "width"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.2
+      "resource":
+        - "torso"
+      "method": "width"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.2
     "X_Measure_3004":  # 손목 둘레
       "direction": "back"
-        "resource":
-          - "back"
-        "method": "w-outline"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.0
+      "resource":
+        - "rightlowerarm"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.9
     "X_Measure_3005":  # 윗팔 둘레
       "direction": "back"
-        "resource":
-          - "rightupperarm"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.5
+      "resource":
+        - "rightupperarm"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.5
     "X_Measure_3006":  # 팔꿈치 둘레
       "direction": "back"
-        "resource":
-          - "rightlowerarm"
-        "method": "w-outline2x"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.0
+      "resource":
+        - "rightlowerarm"
+      "method": "w-outline2x"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.01
     "X_Measure_3101":  # 팔꿈치 기장
       "direction": "back"
-        "resource":
-          - "rightupperarm"
-        "method": "height"
-        "range": [ -0.1, 1.1 ]
-        "pivot": -1.0
+      "resource":
+        - "rightupperarm"
+      "method": "height"
+      "range": [ -0.1, 1.1 ]
+      "pivot": -1.0
     "X_Measure_3102":  # 몸통수직길이
       "direction": "back"
-        "resource":
-          - "torso"
-        "method": "height"
-        "range": [ 0.0, 1.0 ]
-        "pivot": 0.7
+      "resource":
+        - "torso"
+      "method": "height"
+      "range": [ 0.0, 1.0 ]
+      "pivot": 0.7
     "X_Measure_3103":  # 엉덩이수직길이
       "direction": "back"
       "resource":
@@ -224,7 +224,7 @@ measurement:
         - "upperleg"
       "method": "height"
       "range": [ 0.5, 0.80 ]
-      "pivot": 0.7
+      "pivot": -1.0
     "X_Measure_3104":  # 엉덩이 길이
       "direction": "back"
       "resource":
@@ -232,7 +232,7 @@ measurement:
         - "upperleg"
       "method": "height"
       "range": [ 0.5, 0.70 ]
-      "pivot": 0.7
+      "pivot": -1.0
     "X_Measure_3105": # 등 길이
       "direction": "back"
       "resource":
