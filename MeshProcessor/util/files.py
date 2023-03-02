@@ -1,4 +1,5 @@
 import copy
+import shutil
 import os
 import open3d as o3d
 import numpy as np
@@ -9,20 +10,8 @@ def get_yaml(path):
     return YamlConfig.get_dict(path)
 
 
-def get_position(ply_path):
+def init_position():
     return np.identity(4)
-    # ply_file = open(ply_path, 'r')
-    # while True:
-    #     line = ply_file.readline()
-    #     if "lastCameraTransform" in line:
-    #         begin = line.find('[')
-    #         value_string = line[begin:-2]
-    #         value_string = value_string.replace('[', '')
-    #         value_string = value_string.replace(']', '')
-    #         vector_string = value_string.split(',')
-    #         vector = [float(value) for value in vector_string]
-    #         matrix = np.array(vector).reshape((4, 4))
-    #         return matrix
 
 
 def get_filename(ply_path):
@@ -47,8 +36,8 @@ def change_filename(root):
 
 def convert_ply_to_img(pcd, path):
     render_pcd = copy.deepcopy(pcd)
-    R = render_pcd.get_rotation_matrix_from_xyz((0, -np.pi / 4, 0))
-    render_pcd.rotate(R)
+    r = render_pcd.get_rotation_matrix_from_xyz((0, -np.pi / 4, 0))
+    render_pcd.rotate(r)
 
     vis = o3d.visualization.Visualizer()
     vis.create_window()
@@ -77,7 +66,7 @@ def convert_http_ply(path, new_filename):
     ply_file.close()
 
 
-def load_ply(root, filename, **kwargs):
+def load_ply(root, filename):
     pcd = o3d.io.read_point_cloud(os.path.join(root, filename))
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=50))
     return pcd
@@ -107,7 +96,7 @@ def load_pcds(path, cam_loc=None, imme_remove=False):
     for ply in file_list:
         filename = ply.replace('.ply', '').lower()
         if cam_loc is None:
-            cam_loc = get_position(ply_path=os.path.join(path, ply))
+            cam_loc = init_position()
         pcd = load_ply(root=path, filename=ply)
         if 'face' not in filename:
             transform = cam_loc
@@ -190,51 +179,25 @@ def trim_ply(ply, begin, end, root, filename):
     f.close()
     new_f.close()
 
-    new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'), cam_loc=None)
+    new_pcd, _ = load_ply(root='', filename=ascii_path.replace('.ply', '_trim.ply'))
     return new_pcd
 
 
-def crop_ply(ply: o3d.geometry.PointCloud, min_bound, max_bound):
-    ply = ply.remove_duplicated_points()
-    import matplotlib.pyplot as plt
-    # # Flip it, otherwise the pointcloud will be upside down.
-    # ply.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+def clean_folder(path, without=None):
+    if without is None:
+        without = []
 
-    with o3d.utility.VerbosityContextManager(
-            o3d.utility.VerbosityLevel.Debug) as cm:
-        labels = np.array(
-            ply.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
-
-    max_label = labels.max()
-    print(f"point cloud has {max_label + 1} clusters")
-    colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 0
-    ply.colors = o3d.utility.Vector3dVector(colors[:, :3])
-
-    largest_cluster_idx = labels.argmax()
-    triangles_to_remove = labels != largest_cluster_idx
-
-    o3d.visualization.draw([ply])
-
-
-def main_cut(path):
-    f = open(path, 'r')
-    new_f = open('./Bug_Cut_Cut.ply', 'w')
-    while True:
-        line = f.readline()
-        if len(line) == 0:
-            return
-        batch = line.split(' ')
-        if len(batch) < 7:
-            continue
-        if float(batch[3]) < 0.4:
-            new_f.write(line)
-    f.close()
-    new_f.close()
-
-    new_pcd, _ = load_ply(root='', filename=path.replace('.ply', '_trim.ply'), cam_loc=None)
-    return new_pcd
+    folders = os.listdir(path)
+    for folder in folders:
+        ban = False
+        for key in without:
+            if key in folder:
+                ban = True
+                break
+        if ban is False:
+            shutil.rmtree(os.path.join(path, folder))
+            os.mkdir(os.path.join(path, folder))
 
 
 if __name__ == '__main__':
-    main_cut('./Bug_Cut.ply')
+    clean_folder('./')

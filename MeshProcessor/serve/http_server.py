@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from util.files import change_filename, load_mesh, write_tri_mesh
 from multiprocessing import Process
-from proc.preprocessing import convert_img
+from proc.vision import convert_img
 from proc.calculating import measure_bodies
 from proc.clustering import get_parts
 from json import dumps

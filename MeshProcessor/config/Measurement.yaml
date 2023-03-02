@@ -1,22 +1,6 @@
 measurement:
   # --- Info ---
   target: "female"
-  custom_colors:
-    [[110, 64, 170], [110, 64, 170], [178, 60, 178], [178, 60, 178],
-     [238, 67, 149], [238, 67, 149], [255, 94, 99], [255, 94, 99],
-     [255, 140, 56], [255, 140, 56], [255, 94, 99], [255, 140, 56],
-     [175, 240, 91], [175, 240, 91], [96, 247, 96], [96, 247, 96],
-     [40, 234, 141], [40, 234, 141], [26, 199, 194], [26, 199, 194],
-     [47, 150, 224], [47, 150, 224], [26, 199, 194], [47, 150, 224]]
-
-  part_labels:
-    ['leftFace', 'rightFace', 'leftUpperArmBack', 'leftUpperArmFront',
-     'rightUpperArmBack', 'rightUpperArmFront', 'leftLowerArmBack', 'leftLowerArmFront',
-     'rightLowerArmBack', 'rightLowerArmFront', 'leftHand', 'rightHand',
-     'torsoFront', 'torsoBack', 'leftUpperLegFront', 'leftUpperLegBack',
-     'rightUpperLegFront', 'rightUpperLegBack', 'leftLowerLegFront', 'leftLowerLegBack',
-     'rightLowerLegFront', 'rightLowerLegBack', 'leftFeet', 'rightFeet']
-
   female:
     "X_Measure_1000": # 키
       "direction": "front"

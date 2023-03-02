@@ -48,10 +48,11 @@ def get_parabola_length(**kwargs):
     if 0.0 < kwargs['pivot'] < 1.0:
         line = int((kwargs['opposite'].max() - kwargs['opposite'].min()) * kwargs['pivot'] + kwargs['opposite'].min())
         pos = kwargs['opposite'][line]
-        
+
         # Depth가 없으면 Center쪽으로 좀 더 다가가는 코드가 필요
         # Depth가 애초에 잘못 저장되어 있었음
-        height = kwargs['depth'][center_point, pos] - abs((kwargs['depth'][left_point, pos] + kwargs['depth'][right_point, pos]) / 2.0)
+        height = kwargs['depth'][center_point, pos] - abs(
+            (kwargs['depth'][left_point, pos] + kwargs['depth'][right_point, pos]) / 2.0)
     else:
         center_line = kwargs['opposite'][center_index]
         left_line = kwargs['opposite'][left_index]
@@ -69,6 +70,7 @@ def get_parabola_length(**kwargs):
     back_term = np.log((4 * a + sqrt_term) / b)
     return mid_term * back_term + front_term
 
+
 def get_straight_length(**kwargs):
     if kwargs['pivot'] < 0:
         length = (kwargs['measure'].max() - kwargs['measure'].min()) * (kwargs['range'][1] - kwargs['range'][0])
@@ -85,15 +87,12 @@ def get_straight_length(**kwargs):
 
 
 def measure_bodies2(**kwargs):
-    if kwargs['template'] is None:
-        template = YamlConfig.get_dict(r'config/Measurement.yaml')
-        template = template['measurement']
+    template = YamlConfig.get_dict(r'config/Measurement.yaml')
+    template = template['measurement']
 
     images = copy.deepcopy(kwargs['images'])
-    pcds = copy.deepcopy(kwargs['pcds'])
     masks = copy.deepcopy(kwargs['masks'])
     depth = copy.deepcopy(kwargs['depth'])
-    # smplx_head = copy.deepcopy(kwargs['smplx_head'])
     resolution = kwargs['res']
     measure_info = template[template['target']]
 
@@ -148,19 +147,17 @@ def measure_bodies2(**kwargs):
                 if "2x" in method:
                     m_length = m_length * 2
                 length += m_length
-        # iamge offset 때문에 2.4cm(0.024) 더 해야함
+        # image offset 때문에 2.4cm(0.024) 더 해야함
         meter = length / resolution + 0.024
         output[code] = copy.deepcopy(round(meter * 100, 2))
     return output
 
 
 def measure_bodies(**kwargs):
-    if kwargs['template'] is None:
-        template = YamlConfig.get_dict(r'config/Measurement.yaml')
-        template = template['measurement']
+    template = YamlConfig.get_dict(r'config/Measurement.yaml')
+    template = template['measurement']
 
     images = copy.deepcopy(kwargs['images'])
-    pcds = copy.deepcopy(kwargs['pcds'])
     masks = copy.deepcopy(kwargs['masks'])
     depth = copy.deepcopy(kwargs['depth'])
     resolution = kwargs['res']
@@ -208,8 +205,6 @@ def measure_bodies(**kwargs):
 
             real_y = real_y / resolution
             real_y = real_y - real_y.min()
-
-            real_z = real_z - real_z.min()
 
             # 길이, 높이 재기(단 pixel의 경우, )
             for threshold, code in thresholds.items():
