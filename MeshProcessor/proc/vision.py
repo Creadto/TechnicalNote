@@ -19,7 +19,7 @@ def draw_image(points, colors):
     img_width = x_vector.max() - x_vector.min() + 1
     img_height = y_vector.max() - y_vector.min() + 1
     backboard = np.zeros((int(img_height), int(img_width), 4))
-    backboard[:, :, 1] = 1.0
+    backboard[:, :, 1] = 0.6
 
     y_max = y_vector.max()
     y_min = y_vector.min()
@@ -27,12 +27,12 @@ def draw_image(points, colors):
     for idx in range(len(points)):
         y = y_max - y_vector[idx] + y_min
         x = x_vector[idx] + x_min
-        # y_min = int(y-2)
-        # y_max = int(y+3)
-        # x_min = int(z-2)
-        # x_max = int(z+3)
-        backboard[y, x, 0:3] = colors[idx, :]
-        backboard[y, x, 3:5] = points[idx, 0]
+        for x_o in range(-1, 2):
+            for y_o in range(-1, 2):
+                if y_min < (y + y_o) < y_max and x_min < (x + x_o) < img_width:
+                    if backboard[y + y_o, x + x_o, 1] == 0.6:
+                        backboard[y + y_o, x + x_o, 0:3] = colors[idx, :]
+                        backboard[y + y_o, x + x_o, 3:5] = points[idx, 0]
     return backboard
 
 

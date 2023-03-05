@@ -153,7 +153,8 @@ def pre_mesh_seq():
     pcds = load_pcds(os.path.join(data_path, 'pointclouds'), imme_remove=False)
 
     from proc.vision import get_segmentation
-    proc_result = get_segmentation(pcds, GlobalConfig, without=['left', 'right', 'face', 'back'])
+    # proc_result = get_segmentation(pcds, GlobalConfig, without=['left', 'right', 'face', 'back'])
+    proc_result = get_segmentation(pcds, GlobalConfig)
 
     # measurement
     from proc.calculating import measure_bodies2
