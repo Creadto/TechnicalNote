@@ -16,20 +16,20 @@ from tf_bodypix.api import download_model, load_model, BodyPixModelPaths
 def draw_image(points, colors):
     y_vector = points[:, 1]
     x_vector = points[:, 2]
-    img_width = x_vector.max() - x_vector.min() + 1
-    img_height = y_vector.max() - y_vector.min() + 1
+    img_height = y_vector.max() + 1
+    img_width = int(img_height * 0.75)
+    lsb = int((x_vector.max() - img_width) / 2.0)
     backboard = np.zeros((int(img_height), int(img_width), 4))
     backboard[:, :, 1] = 0.6
 
     y_max = y_vector.max()
-    y_min = y_vector.min()
-    x_min = x_vector.min()
+    x_vector -= lsb
     for idx in range(len(points)):
-        y = y_max - y_vector[idx] + y_min
-        x = x_vector[idx] + x_min
-        for x_o in range(-1, 2):
-            for y_o in range(-1, 2):
-                if y_min < (y + y_o) < y_max and x_min < (x + x_o) < img_width:
+        y = y_max - y_vector[idx]
+        x = x_vector[idx]
+        for x_o in range(-2, 3):
+            for y_o in range(-2, 3):
+                if 0 < (y + y_o) < img_height and 0 < (x + x_o) < img_width:
                     if backboard[y + y_o, x + x_o, 1] == 0.6:
                         backboard[y + y_o, x + x_o, 0:3] = colors[idx, :]
                         backboard[y + y_o, x + x_o, 3:5] = points[idx, 0]
@@ -72,10 +72,19 @@ def convert_img(pcd: o3d.geometry.PointCloud, resolution: int = 500, padding: fl
     r = target_object.get_rotation_matrix_from_xyz((0, 0, -1 * theta))
     target_object = target_object.rotate(r)
 
-    # 다시 0, 0, 0 정렬
+    # 다시 0, 0, 0 정렬 and Cut
     min_bound = target_object.get_min_bound()
     target_object = target_object.translate((-1 * min_bound[0], -1 * min_bound[1], -1 * min_bound[2]))
-
+    max_bound = target_object.get_max_bound()
+    cut_bbox = o3d.geometry.AxisAlignedBoundingBox(
+        min_bound=(0, 0, 0),
+        max_bound=(max_bound[0] / 2, max_bound[1], max_bound[2]))
+    target_object = target_object.crop(cut_bbox)
+    min_bound = target_object.get_min_bound()
+    target_object = target_object.translate((-1 * min_bound[0], -1 * min_bound[1], -1 * min_bound[2]))
+    # Check
+    coordi = o3d.geometry.TriangleMesh.create_coordinate_frame()
+    # o3d.visualization.draw_geometries([coordi, target_object])
     # Draw image
     points = np.asarray(target_object.points)
     norm_points = (points + padding / 2.0) * resolution
@@ -91,6 +100,9 @@ def get_segmentation(pcds, config, without=None):
         without = []
     result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
     for name, pcd in pcds.items():
+        result['pcds'][name] = pcd
+        if "face" in name:
+            continue
         img_rgb, depth = convert_img(pcd, resolution=config['image']['resolution'], padding=0.0)
         if name not in without:
             img_bgr = img_rgb[..., ::-1]
@@ -108,7 +120,6 @@ def get_segmentation(pcds, config, without=None):
 
         result['images'][name] = img_rgb
         result['masks'][name] = mask
-        result['pcds'][name] = pcd
         result['depth'][name] = depth
     result['res'] = config['image']['resolution']
     return result

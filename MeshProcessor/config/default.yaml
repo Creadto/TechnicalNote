@@ -8,7 +8,7 @@ default:
   
   # --- Image Processing ---
   image:
-    resolution: 300.0
+    resolution: 500.0
     offset: 0.024
     padding: 0.0
     custom_colors:
@@ -26,6 +26,10 @@ default:
         'torsoFront', 'torsoBack', 'leftUpperLegFront', 'leftUpperLegBack',
         'rightUpperLegFront', 'rightUpperLegBack', 'leftLowerLegFront', 'leftLowerLegBack',
         'rightLowerLegFront', 'rightLowerLegBack', 'leftFeet', 'rightFeet' ]
+  # --- Mesh Processing ---
+  mesh:
+    face_height: 0.6875
+    face_depth: 0.75
   # --- Utility ---
   path:
     data_path: "./data"

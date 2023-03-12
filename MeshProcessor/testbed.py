@@ -147,18 +147,30 @@ def classify_gender():
 # region non-module
 def pre_mesh_seq():
     data_path = GlobalConfig['path']['data_path']
+    from util.files import change_filename
+    # change_filename(os.path.join(data_path, "pointclouds"))
 
     from util.files import clean_folder, load_pcds
     clean_folder(data_path, ["pointclouds"])
     pcds = load_pcds(os.path.join(data_path, 'pointclouds'), imme_remove=False)
 
     from proc.vision import get_segmentation
-    # proc_result = get_segmentation(pcds, GlobalConfig, without=['left', 'right', 'face', 'back'])
-    proc_result = get_segmentation(pcds, GlobalConfig)
-
+    proc_result = get_segmentation(pcds, GlobalConfig, without=['back', 'face', 'left', 'right'])
+    # only for images from camera
+    # from proc.vision import run_segmentation
+    # from PIL import Image
+    # for key in pcds.keys():
+    #     if "face" in key:
+    #         continue
+    #     im_path = r"D:\Creadto\TechnicalNote\MeshProcessor\storage\230307"
+    #     im_path = os.path.join(im_path, key + '.jpg')
+    #     image = Image.open(im_path)
+    #     _ = run_segmentation(os.path.join(GlobalConfig['path']['seg_path'], key + 'm'), image, GlobalConfig['image']['custom_colors'], GlobalConfig['image']['part_labels'])
     # measurement
     from proc.calculating import measure_bodies2
-    output = measure_bodies2(**proc_result)
+    # proc_result['custom_colors'] = GlobalConfig['image']['custom_colors']
+    # proc_result['part_labels'] = GlobalConfig['image']['part_labels']
+    # proc_result['measure'] = measure_bodies2(**proc_result)
 
     # pose estimation
     import subprocess
@@ -192,13 +204,15 @@ def pre_mesh_seq():
 
 # region non-validated
 def crop_n_attach(mesh_file, proc_result):
+    import numpy as np
+    import open3d as o3d
+    from proc.meshing import gen_tri_mesh
+    res = GlobalConfig['image']['resolution']
     head = proc_result['pcds']['face']
-
     # 기존 길이 알아내기
     mask = proc_result['masks']['front'][:, :, 1]
     height_x, _ = np.where(mask != 0)
-    origin_height = ((height_x.max() - height_x.min()) / 500.0) + 0.032
-
+    origin_height = ((height_x.max() - height_x.min()) / res) + 0.032
     # 기존 길이에 맞춰 스케일링 및 정리정돈
     min_bound = mesh_file.get_min_bound()
     max_bound = mesh_file.get_max_bound()
@@ -208,9 +222,8 @@ def crop_n_attach(mesh_file, proc_result):
     mesh_file = mesh_file.transform(np.identity(4))
     mesh_file.compute_vertex_normals()
     min_bound = mesh_file.get_min_bound()
-    max_bound = mesh_file.get_max_bound()
 
-    mask = proc_result['masks']['back'][:, :, 1]
+    mask = proc_result['masks']['front'][:, :, 1]
 
     r = head.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2.0, 0))
     head = head.rotate(r)
@@ -226,14 +239,13 @@ def crop_n_attach(mesh_file, proc_result):
     # 얼굴 컬러: 64(Green)
     target_color = 64
     face_row, face_col = np.where(mask == target_color)
-    face_len = ((max(face_row) - min(face_row)) / 500.0) + 0.048 + 0.16
+    face_len = ((max(face_row) - min(face_row)) / res)
     head_bbox = o3d.geometry.AxisAlignedBoundingBox(
         min_bound=(head_min_bound[0], head_max_bound[1] - face_len, head_min_bound[2]),
         max_bound=head_max_bound)
     cut_head = head.crop(head_bbox)
     cut_min_bound = cut_head.get_min_bound()
     cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
-    hbb = cut_head.get_axis_aligned_bounding_box()
     bbb = mesh_file.get_oriented_bounding_box()
 
     # atan 구하기 세우기
@@ -250,42 +262,135 @@ def crop_n_attach(mesh_file, proc_result):
     # 머리 자르기
     mask = proc_result['masks']['front'][:, :, 1]
     torso_color = 240
-    _, torso_width = np.where(mask == torso_color)
-    height, _ = mask.shape
-    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + (
-                (torso_width.mean() - torso_width.min()) / 500 / 2.0),
-                    (height - face_row.max()) / 500.0, 0)
-    cut_smpl_max = (
-    (face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
-    (height - face_row.min()) / 500.0, max_bound[2])
+    _, torso_col = np.where(mask == torso_color)
+    height, _ = mask.shape # ***** 이거 왜 이렇게 값이 높지?
+    # 머리의 간격에서 torso의 4/1씩 오프셋으로 양쪽을 자름
+    torso_q_width = (torso_col.max() - torso_col.min()) / res / 4.0
+    cut_smpl_min = ((face_col.min() / res) - torso_q_width,
+                    (height - face_row.max()) / res, 0)
+    cut_smpl_max = ((face_col.max() / res) + torso_q_width,
+                    (height - face_row.min()) / res, max_bound[2])
+    # 그리고 smplx의 center로 축을 이동함
+    cut_smpl_center = (cut_smpl_max[0] - cut_smpl_min[0]) / 2.0
+    mf_abb = mesh_file.get_axis_aligned_bounding_box()
+    mf_center = mf_abb.get_center()
+    cut_smpl_min = (mf_center[0] - cut_smpl_center, cut_smpl_min[1], cut_smpl_min[2])
+    cut_smpl_max = (mf_center[0] + cut_smpl_center, cut_smpl_max[1], cut_smpl_max[2])
+
+    # 자름
     head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
                                                     max_bound=cut_smpl_max)
     head_bbox.color = [1, 0, 0]
     dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
 
+    # Fit한 헤드를 추출
     dummy_max_bound = dummy_head.get_max_bound()
-    height_gap = (height - face_row.min()) / 500.0 - dummy_max_bound[1]
-    cut_smpl_min = ((face_col.min() / 500.0) - (round(torso_width.mean()) / 500.0) + (
-                (torso_width.mean() - torso_width.min()) / 500 / 2.0),
-                    ((height - face_row.max()) / 500.0) - height_gap, 0)
-    cut_smpl_max = (
-    (face_col.max() / 500.0) - (round(torso_width.mean()) / 500.0) + ((torso_width.mean() - torso_width.min()) / 500),
-    ((height - face_row.min()) / 500.0) - height_gap, max_bound[2])
+    height_gap = (height - face_row.min()) / res - dummy_max_bound[1]
+    cut_smpl_min = (cut_smpl_min[0], cut_smpl_min[1] - height_gap, cut_smpl_min[2])
+    cut_smpl_max = (cut_smpl_max[0], cut_smpl_max[1] - height_gap, cut_smpl_max[2])
     head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=cut_smpl_min,
                                                     max_bound=cut_smpl_max)
     dummy_head = copy.deepcopy(mesh_file).crop(head_bbox)
 
     head_gap = dummy_head.get_max_bound() - dummy_head.get_min_bound()
+    # 이거 왜 있더라
     if head_gap[1] > 0.05:
         cut_head_max_bound = cut_head.get_max_bound()
         head_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=(0, cut_head_max_bound[1] - head_gap[1], 0),
                                                         max_bound=(cut_head_max_bound[0], cut_head_max_bound[1],
                                                                    cut_head_max_bound[2]))
         cut_head = cut_head.crop(head_bbox)
+
+    # 안면만 떼어내는 작업(cut_head to cut_face)
+    chbb = cut_head.get_axis_aligned_bounding_box()
+    face_min_bound = (chbb.get_min_bound()[0], chbb.get_min_bound()[1], chbb.get_max_bound()[2] * 0.75 )#GlobalConfig['mesh']['face_depth'])
+    face_gap = (chbb.get_max_bound()[1] - chbb.get_min_bound()[1]) * GlobalConfig['mesh']['face_height']
+    face_max_bound = (chbb.get_max_bound()[0], chbb.get_min_bound()[1] + face_gap, chbb.get_max_bound()[2])
+    face_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=face_min_bound, max_bound=face_max_bound)
+    face_bbox.color = [1, 0, 0]
+    o3d.visualization.draw_geometries([cut_head, face_bbox])
+    face = cut_head.crop(face_bbox)
+
+    # max bound의 z값과 min bound z값의 차이정도를 smplx dummy head box에 적용하여 face를 추출해야함
+    face_depth = face_bbox.get_max_bound()[2] - face_bbox.get_min_bound()[2]
+    dhbb = dummy_head.get_axis_aligned_bounding_box()
+    sf_min_bound = (dhbb.get_min_bound()[0], dhbb.get_min_bound()[1], dhbb.get_max_bound()[2] - face_depth)
+    sf_max_bound = (dhbb.get_max_bound()[0], dhbb.get_min_bound()[1] + face_gap, dhbb.get_max_bound()[2])
+    sf_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=sf_min_bound, max_bound=sf_max_bound)
+    sf_bbox.color = [0, 1, 0]
+    o3d.visualization.draw_geometries([dummy_head, sf_bbox])
+    smplx_face = dummy_head.crop(sf_bbox)
+
+    # x, y scale을 조정 (z 축은 건드리면 안돼서 manual 조정)
+    sfbb = smplx_face.get_axis_aligned_bounding_box()
+    sfbb.color = [0, 1, 1]
+    fbb = face.get_axis_aligned_bounding_box()
+    ratio = (sfbb.get_max_bound() - sfbb.get_min_bound()) / (fbb.get_max_bound() - fbb.get_min_bound())
+
+    # 머리로 이동
+    face.vertices = o3d.utility.Vector3dVector(np.asarray(face.vertices) * np.array([ratio[0], ratio[1], 1.]))
+    xbb = face.get_min_bound()
+    xxbb = sfbb.get_min_bound()
+    face = face.translate((-1 * xbb[0], -1 * xbb[1], -1 * xbb[2]))
+    face = face.translate((xxbb[0], xxbb[1], xxbb[2]))
+    # 탐색용 트리 생성
+    pcd_tree = o3d.geometry.KDTreeFlann(face)
+    # 각 smplx face의 포인트를 돌면서 face와 교체
+
+    backup_mesh = copy.deepcopy(mesh_file)
+    backup_face = copy.deepcopy(face)
+    mesh_file = copy.deepcopy(backup_mesh)
+    face = copy.deepcopy(backup_face)
+    mesh_file.paint_uniform_color([211.0 / 255.0, 150.0 / 255.0, 135.0 / 255.0])
+    mesh_file = mesh_file.subdivide_loop(number_of_iterations=2)
+    face_surface = np.asarray(mesh_file.vertices)
+    fbb_min_bound = sfbb.get_min_bound()
+    fbb_max_bound = sfbb.get_max_bound()
+    for i, face_point in enumerate(face_surface):
+        # temp
+        point_x = face_point[0]
+        point_y = face_point[1]
+        point_z = face_point[2]
+        condi1 = fbb_min_bound[0] < point_x < fbb_max_bound[0]
+        condi2 = fbb_min_bound[1] < point_y < fbb_max_bound[1]
+        condi3 = fbb_min_bound[2] < point_z < fbb_max_bound[2]
+        if condi1 and condi2 and condi3:
+            point = mesh_file.vertices[i]
+            point[2] = point[2] * 0.94
+            mesh_file.vertices[i] = point
+        # [_, idx_vec, dist_vec] = pcd_tree.search_knn_vector_3d(face_point, 1)
+        # dist = dist_vec.pop()
+        # if dist < 0.0001:
+        #     idx = idx_vec.pop()
+        #     # point = face.points[idx]
+        #     point = mesh_file.vertices[i]
+        #     if face.vertices[idx][2] < point[2]:
+        #         point = copy.deepcopy(face.vertices[idx])
+        #         point[2] = point[2] * 0.98
+        #     mesh_file.vertices[i] = point
+            # mesh_file.vertex_colors[i] = face.vertex_colors[idx]
+
+    face = face.subdivide_loop(number_of_iterations=2)
+    o3d.visualization.draw_geometries([mesh_file, face])
+    # dummy1 = np.asarray(mesh_file.vertices)
+    # dummy2 = np.asarray(face.points)
+    # merged1 = np.concatenate((dummy1, dummy2), axis=0)
+    #
+    # dummy3 = np.asarray(mesh_file.vertex_colors)
+    # dummy4 = np.asarray(face.colors)
+    # merged2 = np.concatenate((dummy3, dummy4), axis=0)
+    #
+    # mesh_file.vertices = o3d.utility.Vector3dVector(merged1)
+    # mesh_file.vertex_colors = o3d.utility.Vector3dVector(merged2)
+    # 현재 dummy head로 이동
+    pt = os.path.join(r"D:\Creadto\TechnicalNote\MeshProcessor\storage\230307", "temp-point-cloud-mesh 6.ply")
+    face_mesh = o3d.io.read_triangle_mesh(pt)
+
+
     cut_min_bound = cut_head.get_min_bound()
     cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
     # body = copy.deepcopy(mesh_file).crop(body_bbox)
-    dhbb = dummy_head.get_axis_aligned_bounding_box()
+
     dummy_gap = dhbb.get_max_bound() - dhbb.get_min_bound()
     hbb = cut_head.get_axis_aligned_bounding_box()
     head_gap = hbb.get_max_bound() - hbb.get_min_bound()

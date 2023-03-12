@@ -14,7 +14,7 @@ measurement:
     "X_Measure_1001": # 앞 얼굴 중심 너비
       "direction": "front"
       "resource":
-        - "torso"
+        - "face"
       "method": "width"
       "range": [ 0.0, 1.0 ]
       "pivot": 0.4

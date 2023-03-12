@@ -22,7 +22,7 @@ def get_filename(ply_path):
             value_string = line[:-1]
             value_string = value_string.replace('comment direction ', '')
             return value_string
-        elif "Surface" in line:
+        elif "StandardCyborg" in line:
             return "Face"
 
 
@@ -97,12 +97,13 @@ def load_pcds(path, cam_loc=None, imme_remove=False):
         filename = ply.replace('.ply', '').lower()
         if cam_loc is None:
             cam_loc = init_position()
-        pcd = load_ply(root=path, filename=ply)
         if 'face' not in filename:
+            pcd = load_ply(root=path, filename=ply)
             transform = cam_loc
             location = transform[-1][0:3]
             pcd.orient_normals_towards_camera_location(location)
         else:
+            pcd = load_mesh(root=path, filename=ply)
             r = pcd.get_rotation_matrix_from_xyz((0, -1 * np.pi / 2.0, 0))
             pcd = pcd.rotate(r)
 
