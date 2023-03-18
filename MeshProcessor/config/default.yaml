@@ -1,5 +1,6 @@
 default:
   # --- Customize ---
+  run_mode: "testbed"
   testbed:
     some: "None"
   server:

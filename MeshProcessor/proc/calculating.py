@@ -31,21 +31,21 @@ def get_parabola_length(**kwargs):
 
     # 여기는 두 개의 resource를 반영하면 안되는 제약 조건이 존재
     # 이게 픽셀 위치
-    gap = kwargs['range'][1] - kwargs['range'][0]
+    gap = (kwargs['range'][1] - kwargs['range'][0]) / 2.0
 
     if 0.0 < kwargs['pivot'] < 1.0:
         line = int((kwargs['opposite'].max() - kwargs['opposite'].min()) * kwargs['pivot'] + kwargs['opposite'].min())
         pos = kwargs['opposite'][line]
         depth_line = kwargs['depth'][:, pos]
-        significant_index = np.where(depth_line != 0.0)
+        significant_index = np.where(depth_line != 0.0)[0]
         significant_line = depth_line[significant_index]
 
-        center = int((significant_index.max() - significant_index.min()) / 2)
-        center_point = center + significant_index.min()
-        right_point = center + int(center * gap) + significant_index.min()
-        left_point = center + -1 * int(center * gap) + significant_index.min()
+        center = int(len(significant_line) / 2)
+        center_point = center
+        right_point = center + int(center * gap)
+        left_point = center + -1 * int(center * gap)
 
-        height = significant_line[center_point] - abs((significant_line[left_point] + significant_line[right_point]) / 2.0)
+        height = np.median(significant_line)
         # 세 점의 라인
         width = right_point - left_point
     else:
@@ -62,10 +62,14 @@ def get_parabola_length(**kwargs):
         center_line = kwargs['opposite'][center_index]
         left_line = kwargs['opposite'][left_index]
         right_line = kwargs['opposite'][right_index]
-        if kwargs['pivot'] == 0.0:
-            height = center_line.max() - abs((left_line.max() - right_line.max()) / 2.0)
-        else:
-            height = center_line.min() - abs((left_line.min() - right_line.min()) / 2.0)
+        width = right_point - left_point
+        try:
+            if kwargs['pivot'] == 0.0:
+                height = center_line.max() - abs((left_line.max() - right_line.max()) / 2.0)
+            else:
+                height = center_line.min() - abs((left_line.min() - right_line.min()) / 2.0)
+        except ValueError:
+            height = 150.0
 
     a = height
     b = width
@@ -150,7 +154,7 @@ def measure_bodies2(**kwargs):
                 m_length = m_length * 2
             length += m_length
         # image offset 때문에 2.4cm(0.024) 더 해야함
-        meter = length / resolution + 0.024
+        meter = float(length / resolution + 0.024)
         output[code] = copy.deepcopy(round(meter * 100, 2))
     return output
 

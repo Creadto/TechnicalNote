@@ -146,16 +146,19 @@ def classify_gender():
 
 # region non-module
 def pre_mesh_seq():
-    data_path = GlobalConfig['path']['data_path']
+    global_config = YamlConfig.get_dict(r'config/default.yaml')
+    global_config = global_config['default']
+    data_path = global_config['path']['data_path']
     from util.files import change_filename
-    # change_filename(os.path.join(data_path, "pointclouds"))
+    change_filename(os.path.join(data_path, "pointclouds"))
 
     from util.files import clean_folder, load_pcds
     clean_folder(data_path, ["pointclouds"])
     pcds = load_pcds(os.path.join(data_path, 'pointclouds'), imme_remove=False)
 
-    from proc.vision import get_segmentation
-    proc_result = get_segmentation(pcds, GlobalConfig, without=['back', 'face', 'left', 'right'])
+    from proc.vision import VisionProcessor
+    processor = VisionProcessor(global_config)
+    proc_result = processor.get_info_from_pcds(pcds=pcds, without=['back', 'face', 'left', 'right'])
     # only for images from camera
     # from proc.vision import run_segmentation
     # from PIL import Image
@@ -168,9 +171,8 @@ def pre_mesh_seq():
     #     _ = run_segmentation(os.path.join(GlobalConfig['path']['seg_path'], key + 'm'), image, GlobalConfig['image']['custom_colors'], GlobalConfig['image']['part_labels'])
     # measurement
     from proc.calculating import measure_bodies2
-    # proc_result['custom_colors'] = GlobalConfig['image']['custom_colors']
-    # proc_result['part_labels'] = GlobalConfig['image']['part_labels']
-    # proc_result['measure'] = measure_bodies2(**proc_result)
+    proc_result['measure'] = measure_bodies2(**proc_result)
+    YamlConfig.write_yaml('./Measured.yaml', proc_result['measure'])
 
     # pose estimation
     import subprocess
@@ -207,7 +209,11 @@ def crop_n_attach(mesh_file, proc_result):
     import numpy as np
     import open3d as o3d
     from proc.meshing import gen_tri_mesh
-    res = GlobalConfig['image']['resolution']
+
+    global_config = YamlConfig.get_dict(r'config/default.yaml')
+    global_config = global_config['default']
+
+    res = global_config['image']['resolution']
     head = proc_result['pcds']['face']
     # 기존 길이 알아내기
     mask = proc_result['masks']['front'][:, :, 1]
@@ -371,7 +377,11 @@ def crop_n_attach(mesh_file, proc_result):
             # mesh_file.vertex_colors[i] = face.vertex_colors[idx]
 
     face = face.subdivide_loop(number_of_iterations=2)
-    o3d.visualization.draw_geometries([mesh_file, face])
+    # o3d.visualization.draw_geometries([mesh_file])
+    whole = o3d.geometry.TriangleMesh()
+    whole += mesh_file
+    whole += face
+    o3d.io.write_triangle_mesh("./mesh_file.ply", whole, write_ascii=True)
     # dummy1 = np.asarray(mesh_file.vertices)
     # dummy2 = np.asarray(face.points)
     # merged1 = np.concatenate((dummy1, dummy2), axis=0)
@@ -382,10 +392,6 @@ def crop_n_attach(mesh_file, proc_result):
     #
     # mesh_file.vertices = o3d.utility.Vector3dVector(merged1)
     # mesh_file.vertex_colors = o3d.utility.Vector3dVector(merged2)
-    # 현재 dummy head로 이동
-    pt = os.path.join(r"D:\Creadto\TechnicalNote\MeshProcessor\storage\230307", "temp-point-cloud-mesh 6.ply")
-    face_mesh = o3d.io.read_triangle_mesh(pt)
-
 
     cut_min_bound = cut_head.get_min_bound()
     cut_head = cut_head.translate((-1 * cut_min_bound[0], -1 * cut_min_bound[1], -1 * cut_min_bound[2]))
@@ -424,10 +430,7 @@ def crop_n_attach(mesh_file, proc_result):
 # endregion
 
 
-def main():
-    points = 3773033 + 70700 + 2590271 + 3133489 + 3487231
-
-    print(points)
+def test():
     begin = time.time()
     mesh_file, proc_result = pre_mesh_seq()
     crop_n_attach(mesh_file, proc_result)
@@ -436,7 +439,5 @@ def main():
 
 
 if __name__ == '__main__':
-    GlobalConfig = YamlConfig.get_dict(r'config/default.yaml')
-    GlobalConfig = GlobalConfig['default']
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    main()
+    test()

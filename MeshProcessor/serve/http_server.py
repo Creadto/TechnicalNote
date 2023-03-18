@@ -3,17 +3,11 @@ import time
 import threading
 import subprocess
 import shutil
-import cv2
-import numpy as np
 from util.files import change_filename, load_mesh, write_tri_mesh
 from multiprocessing import Process
-from proc.vision import convert_img
-from proc.calculating import measure_bodies
-from proc.clustering import get_parts
+from proc.calculating import measure_bodies2
+from proc.vision import VisionProcessor
 from json import dumps
-import torch
-import torch.nn as nn
-from torchvision import models
 from http.server import BaseHTTPRequestHandler
 from util.comm_manager import HttpServer
 import util.files as files
@@ -21,6 +15,7 @@ from util.yaml_config import YamlConfig
 import json
 
 from testbed import crop_n_attach
+
 
 def dumper(obj):
     try:
@@ -113,7 +108,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 class HttpProvider:
-    def __init__(self, ip, port):
+    def __init__(self, config):
+        ip = config['server']['ip']
+        port = config['server']['port']
         if not isinstance(ip, str):
             raise Exception("Wrong IP number: Input IP number as string")
         if not isinstance(port, int):
@@ -125,6 +122,7 @@ class HttpProvider:
         self.data_path = os.path.join(self.server_path, '../data')
         self.script_path = os.path.join(self.server_path, '../script')
         self.server = None
+        self.processor = VisionProcessor(config)
 
         # Cleaning
         folders = os.listdir(self.data_path)
@@ -161,54 +159,9 @@ class HttpProvider:
 
         self.NewMessage = None
         change_filename(os.path.join(self.data_path, 'pointclouds'))
-        proc_result = {'images': dict(), 'masks': dict(), 'pcds': dict(), 'depth': dict()}
         pcds = files.load_pcds(os.path.join(self.data_path, 'pointclouds'), imme_remove=False)
-        face_color = None
-        total_height = 1.73
-        for name, pcd in pcds.items():
-            # pcd = get_largest_cluster(pcd)
-            img_rgb, depth = convert_img(pcd, padding=0.0)
-            img_bgr = img_rgb[..., ::-1]
-            cv2.imwrite(os.path.join(self.data_path, 'images', name + '.jpg'), img_bgr * 255)
-            mask = get_parts(os.path.join(self.data_path, 'images', name + '.jpg'), name)
-
-            proc_result['images'][name] = img_rgb
-            proc_result['masks'][name] = mask
-            proc_result['pcds'][name] = pcd
-            proc_result['depth'][name] = depth
-            if 'front' not in name:
-                os.remove(os.path.join(self.data_path, 'images', name + '.jpg'))
-            else:
-                face_mask = [110, 64, 170]
-                mask = mask[:, :, 1]
-                height_x, height_y = np.where(mask != 0)
-                # height_x, height_y = mask.shape
-                part_x, part_y = np.where(mask == face_mask[1])
-                #total_height = ((height_x - part_x.min()) / 500.0)
-                total_height = ((height_x.max() - part_x.min()) / 500.0)
-                total_height = round((total_height * 100.0) + 3.2, 2)
-
-                face_color = img_rgb[((part_x.max() - part_x.min()) // 4) + part_x.min(),
-                             ((part_y.max() - part_y.min()) // 2) + part_y.min(), :]
-
-                # gender classification
-                # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # device object
-                # save_path = os.path.join(self.server_path, '../models/gender_sub/gender_classifier.pth')
-                # model = models.resnet18(pretrained=True)
-                # num_features = model.fc.in_features
-                # model.fc = nn.Linear(num_features, 2)  # binary classification (num_of_class == 2)
-                # model.load_state_dict(torch.load(save_path, map_location=torch.device('cpu')))
-                # model.to(device)
-                #
-                # output = model(img_rgb)
-
-                print(face_color * 2)
-                print(total_height)
-
-        proc_result['res'] = 500
-        proc_result['template'] = None
-        proc_result['total_height'] = total_height
-        output = measure_bodies(**proc_result)
+        proc_result = self.processor.get_info_from_pcds(pcds=pcds)
+        output = measure_bodies2(**proc_result)
         YamlConfig.write_yaml(os.path.join(self.server_path, './Measured.yaml'), output)
         for idx, file_name in enumerate(file_list):
             load_name = "Loaded" + str(idx) + ".ply"
@@ -236,11 +189,12 @@ class HttpProvider:
 
         # read mesh file
         mesh_file = load_mesh(mesh_path, '000.obj')
-        #mesh_file.paint_uniform_color(face_color * 2)
+        # mesh_file.paint_uniform_color(face_color * 2)
         mesh_file.paint_uniform_color([222.0 / 255.0, 171.0 / 255.0, 127.0 / 255.0])
         mesh_taubin = crop_n_attach(mesh_file, proc_result)
         write_tri_mesh(mesh_taubin, filename='Meshed.ply', path=os.path.join(self.server_path))
         os.remove(os.path.join(self.server_path, 'Meshing.tat'))
+
     def binder(self):
         self.server = HttpServer(ip=self.ip, port=self.port, listener=self.listener, handler=RequestHandler)
 
