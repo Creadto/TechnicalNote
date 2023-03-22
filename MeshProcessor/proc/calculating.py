@@ -34,20 +34,21 @@ def get_parabola_length(**kwargs):
     gap = (kwargs['range'][1] - kwargs['range'][0]) / 2.0
 
     if 0.0 < kwargs['pivot'] < 1.0:
+        if "1009" in kwargs['code']:
+            test = 1
         line = int((kwargs['opposite'].max() - kwargs['opposite'].min()) * kwargs['pivot'] + kwargs['opposite'].min())
-        pos = kwargs['opposite'][line]
-        depth_line = kwargs['depth'][:, pos]
-        significant_index = np.where(depth_line != 0.0)[0]
-        significant_line = depth_line[significant_index]
+        depth_line = kwargs['depth'][:, line]
+        significant_index = np.where(kwargs['opposite'] == line)[0]
+        measure_index = kwargs['measure'][significant_index]
+        measure_index = np.unique(measure_index)
 
-        center = int(len(significant_line) / 2)
-        center_point = center
-        right_point = center + int(center * gap)
-        left_point = center + -1 * int(center * gap)
+        significant_line = depth_line[measure_index]
+        denoise_index = np.where(significant_line != 0.)[0]
+        significant_line = significant_line[denoise_index]
 
-        height = np.median(significant_line)
+        height = significant_line.max() - significant_line.min()
         # 세 점의 라인
-        width = right_point - left_point
+        width = (denoise_index.max() - denoise_index.min()) * (kwargs['range'][1] - kwargs['range'][0])
     else:
         center = int((kwargs['measure'].max() - kwargs['measure'].min()) / 2)
         center_point = center + kwargs['measure'].min()
@@ -149,13 +150,12 @@ def measure_bodies2(**kwargs):
                 opposite = surface_width
 
             m_length = m_method(measure=target, opposite=opposite, image=image,
-                                range=m_range, pivot=pivot, depth=m_depth)
+                                range=m_range, pivot=pivot, depth=m_depth, code=code)
             if "2x" in method:
                 m_length = m_length * 2
-            length += m_length
-        # image offset 때문에 2.4cm(0.024) 더 해야함
-        meter = float(length / resolution + 0.024)
-        output[code] = copy.deepcopy(round(meter * 100, 2))
+            # image offset 때문에 2.4cm(0.024) 더 해야함
+            length += float(m_length / resolution + 0.024)
+        output[code] = copy.deepcopy(round(length * 100, 2))
     return output
 
 

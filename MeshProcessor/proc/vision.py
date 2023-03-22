@@ -1,6 +1,7 @@
 import os
 import cv2
 import copy
+import numba
 import numpy as np
 import open3d as o3d
 from PIL import Image
@@ -78,7 +79,8 @@ class VisionProcessor:
         return colored_mask
 
     @staticmethod
-    def __draw_image(points, colors):
+    @numba.jit
+    def __draw_image2(points, colors):
         y_vector = points[:, 1]
         x_vector = points[:, 2]
         img_height = y_vector.max() + 1
@@ -91,6 +93,27 @@ class VisionProcessor:
         x_vector -= lsb
         for idx in range(len(points)):
             y = y_max - y_vector[idx]
+            x = x_vector[idx]
+            for x_o in range(-2, 3):
+                for y_o in range(-2, 3):
+                    if 0 < (y + y_o) < img_height and 0 < (x + x_o) < img_width:
+                        if backboard[y + y_o, x + x_o, 1] == 0.6:
+                            backboard[y + y_o, x + x_o, 0:3] = colors[idx, :]
+                            backboard[y + y_o, x + x_o, 3:5] = points[idx, 0]
+        return backboard
+
+    @staticmethod
+    @numba.jit
+    def __draw_image(points, colors):
+        y_max = points[:, 1].max()
+        img_height = y_max + 1
+        img_width = int(img_height * 0.75)
+        backboard = np.zeros((int(img_height), int(img_width), 4))
+        backboard[:, :, 1] = 0.6
+
+        x_vector = points[:, 2] - int((points[:, 2].max() - img_width) / 2.0)
+        for idx in range(len(points)):
+            y = y_max - points[:, 1][idx]
             x = x_vector[idx]
             for x_o in range(-2, 3):
                 for y_o in range(-2, 3):
@@ -140,7 +163,7 @@ class VisionProcessor:
         max_bound = target_object.get_max_bound()
         cut_bbox = o3d.geometry.AxisAlignedBoundingBox(
             min_bound=(0, 0, 0),
-            max_bound=(max_bound[0] / 2, max_bound[1], max_bound[2]))
+            max_bound=(0.5, max_bound[1], max_bound[2]))
         target_object = target_object.crop(cut_bbox)
         min_bound = target_object.get_min_bound()
         target_object = target_object.translate((-1 * min_bound[0], -1 * min_bound[1], -1 * min_bound[2]))

@@ -9,7 +9,7 @@ measurement:
         - "lowerleg"
         - "feet"
       "method": "height"
-      "range": [0.0, 1.0]
+      "range": [-0.02, 1.0]
       "pivot": -1.0 # don't care(-1.0)
     "X_Measure_1001": # 앞 얼굴 중심 너비
       "direction": "front"
@@ -22,9 +22,9 @@ measurement:
       "direction": "front"
       "resource":
         - "face"
-      "method": "w-outline"
+      "method": "w-outline2x"
       "range": [ 0.0, 1.0 ]
-      "pivot": 0.9
+      "pivot": 0.85
     "X_Measure_1003":  # 앞 품
       "direction": "front"
       "resource":
@@ -68,16 +68,17 @@ measurement:
       "range": [ 0.0, 1.0 ]
       "pivot": 0.8
     "X_Measure_1009":  # 무릎 둘레
-      "direction": "front|back"
+      "direction": "front"
       "resource":
-        - "lowerleg"
+        - "leftlowerleg"
+        - "leftupperleg"
       "method": "w-outline2x"
       "range": [ 0.0, 1.0 ]
-      "pivot": 0.01
+      "pivot": 0.55
     "X_Measure_1010":  # 종아리 둘레
-      "direction": "front|back"
+      "direction": "front"
       "resource":
-        - "lowerleg"
+        - "leftlowerleg"
       "method": "w-outline2x"
       "range": [ 0.0, 1.0 ]
       "pivot": 0.2

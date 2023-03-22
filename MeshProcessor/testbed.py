@@ -169,6 +169,7 @@ def pre_mesh_seq():
     #     im_path = os.path.join(im_path, key + '.jpg')
     #     image = Image.open(im_path)
     #     _ = run_segmentation(os.path.join(GlobalConfig['path']['seg_path'], key + 'm'), image, GlobalConfig['image']['custom_colors'], GlobalConfig['image']['part_labels'])
+
     # measurement
     from proc.calculating import measure_bodies2
     proc_result['measure'] = measure_bodies2(**proc_result)
