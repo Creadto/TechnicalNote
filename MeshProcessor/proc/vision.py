@@ -46,7 +46,7 @@ class VisionProcessor:
             seg_path.mkdir(parents=True, exist_ok=True)
             seg_path = os.path.join(seg_path, name)
 
-            mask = self.__run_segmentation(seg_path, img_rgb)
+            mask = self.run_segmentation(seg_path, img_rgb)
 
             result['images'][name] = img_rgb
             result['masks'][name] = mask
@@ -56,9 +56,8 @@ class VisionProcessor:
         result['part_labels'] = self.labels
         return result
 
-    def __run_segmentation(self, path, image):
+    def run_segmentation(self, path, image):
         # load model (once)
-        #image_array = tf.keras.preprocessing.image.img_to_array(image)
         image_array = image
         result = self.seg_model.predict_single(image_array)
 
@@ -145,6 +144,7 @@ class VisionProcessor:
 
         max_index = np.where(half_points[:, 0] == half_points[:, 0].max())[0]
         max_points = half_points[max_index, :]
+
         min_pivot = int(len(half_points) * 0.4)
         min_index = np.where(half_points[:, 0] < half_points[min_pivot, 0])[0]
         min_points = half_points[min_index, :]

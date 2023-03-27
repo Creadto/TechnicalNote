@@ -159,17 +159,36 @@ def pre_mesh_seq():
     from proc.vision import VisionProcessor
     processor = VisionProcessor(global_config)
     proc_result = processor.get_info_from_pcds(pcds=pcds, without=['back', 'face', 'left', 'right'])
+
     # only for images from camera
-    # from proc.vision import run_segmentation
     # from PIL import Image
+    # import numpy as np
+    # dummy_result = {'images': dict(), 'masks': dict()}
     # for key in pcds.keys():
     #     if "face" in key:
     #         continue
-    #     im_path = r"D:\Creadto\TechnicalNote\MeshProcessor\storage\230307"
-    #     im_path = os.path.join(im_path, key + '.jpg')
+    #     dump = proc_result['images'][key]
+    #
+    #     name = 'img_' + key
+    #     im_path = os.path.join(global_config['path']['data_path'], 'images')
+    #     im_path = os.path.join(im_path, name + '.jpg')
     #     image = Image.open(im_path)
-    #     _ = run_segmentation(os.path.join(GlobalConfig['path']['seg_path'], key + 'm'), image, GlobalConfig['image']['custom_colors'], GlobalConfig['image']['part_labels'])
-
+    #     image = image.resize((dump.shape[1], dump.shape[0]))
+    #     image_array = np.asarray(image)
+    #     #img_rgb = img_rgb * 255
+    #     #img_rgb = img_rgb.astype(np.float32)
+    #     # setup input and output paths
+    #     from pathlib import Path
+    #     seg_path = Path(global_config['path']['seg_path'])
+    #     seg_path.mkdir(parents=True, exist_ok=True)
+    #     seg_path = os.path.join(seg_path, name)
+    #
+    #     mask = processor.run_segmentation(seg_path, image_array)
+    #
+    #     dummy_result['images'][key] = image_array
+    #     dummy_result['masks'][key] = mask
+    #
+    # replace_crazy(proc_result, dummy_result)
     # measurement
     from proc.calculating import measure_bodies2
     proc_result['measure'] = measure_bodies2(**proc_result)
@@ -206,6 +225,15 @@ def pre_mesh_seq():
 # endregion
 
 # region non-validated
+def replace_crazy(pcd_info, image_info):
+    for key in pcd_info['images'].keys():
+        pcd_image = pcd_info['images'][key]
+        cam_image = image_info['images'][key]
+        pcd_mask = pcd_info['masks'][key]
+        cam_mask = image_info['masks'][key]
+
+
+
 def crop_n_attach(mesh_file, proc_result):
     import numpy as np
     import open3d as o3d
