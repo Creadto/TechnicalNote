@@ -1,6 +1,8 @@
 import os
 import time
 import copy
+
+import external.smplifyx.main
 from util.yaml_config import YamlConfig
 
 
@@ -10,7 +12,6 @@ from util.yaml_config import YamlConfig
 
 # region applied
 def matching_parts(**result):
-
     custom_colors = [
         (110, 64, 170), (110, 64, 170), (178, 60, 178), (178, 60, 178),
         (238, 67, 149), (238, 67, 149), (255, 94, 99), (255, 94, 99),
@@ -207,6 +208,8 @@ def pre_mesh_seq():
                   os.path.join(data_path, 'keypoints', new_name))
 
     # make mesh file
+    from ./external.smplifyx.cmd_parser import argparse
+    from ./external.smplifyx.main
     subprocess.call([os.path.join(abs_path, 'script', "mesh_maker.bat")], shell=True)
     # os.system(os.path.join(self.script_path, "mesh_maker.bat"))
     mesh_path = os.path.join(data_path, 'meshes', 'meshes', 'front')
@@ -231,7 +234,6 @@ def replace_crazy(pcd_info, image_info):
         cam_image = image_info['images'][key]
         pcd_mask = pcd_info['masks'][key]
         cam_mask = image_info['masks'][key]
-
 
 
 def crop_n_attach(mesh_file, proc_result):
@@ -298,7 +300,7 @@ def crop_n_attach(mesh_file, proc_result):
     mask = proc_result['masks']['front'][:, :, 1]
     torso_color = 240
     _, torso_col = np.where(mask == torso_color)
-    height, _ = mask.shape # ***** 이거 왜 이렇게 값이 높지?
+    height, _ = mask.shape  # ***** 이거 왜 이렇게 값이 높지?
     # 머리의 간격에서 torso의 4/1씩 오프셋으로 양쪽을 자름
     torso_q_width = (torso_col.max() - torso_col.min()) / res / 4.0
     cut_smpl_min = ((face_col.min() / res) - torso_q_width,
@@ -338,8 +340,9 @@ def crop_n_attach(mesh_file, proc_result):
 
     # 안면만 떼어내는 작업(cut_head to cut_face)
     chbb = cut_head.get_axis_aligned_bounding_box()
-    face_min_bound = (chbb.get_min_bound()[0], chbb.get_min_bound()[1], chbb.get_max_bound()[2] * 0.75 )#GlobalConfig['mesh']['face_depth'])
-    face_gap = (chbb.get_max_bound()[1] - chbb.get_min_bound()[1]) * GlobalConfig['mesh']['face_height']
+    face_min_bound = (chbb.get_min_bound()[0], chbb.get_min_bound()[1],
+                      chbb.get_max_bound()[2] * 0.75)  # GlobalConfig['mesh']['face_depth'])
+    face_gap = (chbb.get_max_bound()[1] - chbb.get_min_bound()[1]) * global_config['mesh']['face_height']
     face_max_bound = (chbb.get_max_bound()[0], chbb.get_min_bound()[1] + face_gap, chbb.get_max_bound()[2])
     face_bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound=face_min_bound, max_bound=face_max_bound)
     face_bbox.color = [1, 0, 0]
@@ -403,7 +406,7 @@ def crop_n_attach(mesh_file, proc_result):
         #         point = copy.deepcopy(face.vertices[idx])
         #         point[2] = point[2] * 0.98
         #     mesh_file.vertices[i] = point
-            # mesh_file.vertex_colors[i] = face.vertex_colors[idx]
+        # mesh_file.vertex_colors[i] = face.vertex_colors[idx]
 
     face = face.subdivide_loop(number_of_iterations=2)
     # o3d.visualization.draw_geometries([mesh_file])
